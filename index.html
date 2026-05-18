@@ -1,0 +1,1285 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>판매가격·마진 관리 콘솔</title>
+<style>
+  @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css');
+  :root{
+    --paper:#f6f3ec; --card:#fffdf8; --ink:#1c1a17; --ink-soft:#665f55;
+    --line:#e3ddd0; --line-strong:#cfc5b4; --accent:#b4541f; --accent-soft:#fbe9dd;
+    --good:#2f7d4f; --good-soft:#e3f1e7; --warn:#b9821a; --warn-soft:#fbefd6;
+    --bad:#bb3636; --bad-soft:#fbe3e1; --info:#3a6ea5; --info-soft:#e4eef8;
+    --mono:'Roboto Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--paper);color:var(--ink);font-family:'Pretendard',-apple-system,system-ui,sans-serif;padding:0;min-height:100vh}
+  .wrap{max-width:1380px;margin:0 auto;padding:22px 20px 80px}
+  header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:14px}
+  .brand h1{font-size:23px;font-weight:850;letter-spacing:-.5px}
+  .brand p{font-size:12.5px;color:var(--ink-soft);margin-top:4px}
+  .topbtns{display:flex;gap:8px;flex-wrap:wrap}
+  button{font-family:inherit;cursor:pointer;border:1px solid var(--line-strong);background:var(--card);color:var(--ink);border-radius:8px;padding:8px 13px;font-size:13px;font-weight:700;transition:.12s}
+  button:hover{border-color:var(--ink);transform:translateY(-1px)}
+  button.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+  button.primary:hover{background:var(--accent);border-color:var(--accent)}
+  button.ghost{background:transparent}
+  button.tiny{padding:4px 8px;font-size:11.5px;border-radius:6px}
+  button.danger{color:var(--bad);border-color:var(--bad)}
+  button.danger:hover{background:var(--bad);color:#fff}
+  button:disabled{transform:none!important;border-color:var(--line-strong);}
+  nav.tabs{display:flex;gap:2px;margin:0 0 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  nav.tabs button{border:none;border-radius:0;background:none;padding:10px 16px;font-size:14px;color:var(--ink-soft);border-bottom:2px solid transparent;font-weight:700}
+  nav.tabs button:hover{transform:none;color:var(--ink)}
+  nav.tabs button.on{color:var(--ink);border-bottom-color:var(--accent)}
+  section{display:none}
+  section.on{display:block;animation:fade .18s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1}}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:16px}
+  .panel h2{font-size:15px;font-weight:850;letter-spacing:-.25px;margin-bottom:5px}
+  .panel .sub{font-size:12.5px;color:var(--ink-soft);margin-bottom:14px;line-height:1.55}
+  .stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
+  .stat .k{font-size:11.5px;color:var(--ink-soft);font-weight:800;text-transform:uppercase;letter-spacing:.35px}
+  .stat .v{font-size:25px;font-weight:850;font-family:var(--mono);margin-top:4px;letter-spacing:-1px}
+  .stat.bad{border-color:#eeb9b4;background:var(--bad-soft)}
+  .stat.bad .v{color:var(--bad)}
+  .filterbar{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
+  .right{margin-left:auto}
+  input,select{font-family:inherit;font-size:13px;padding:8px 10px;border:1px solid var(--line-strong);border-radius:7px;background:#fff;color:var(--ink)}
+  input[type=number]{font-family:var(--mono);text-align:right}
+  input:focus,select:focus{outline:2px solid var(--accent);border-color:var(--accent)}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+  th{font-size:11.5px;text-transform:uppercase;letter-spacing:.35px;color:var(--ink-soft);font-weight:800;background:#efeadf;position:sticky;top:0;z-index:2}
+  tbody tr:hover{background:#fbf8f0}
+  td.num,th.num{text-align:right;font-family:var(--mono);white-space:nowrap}
+  .tablewrap{overflow:auto;border:1px solid var(--line);border-radius:10px;max-height:70vh}
+  .price-input{width:105px;font-family:var(--mono);text-align:right;padding:6px 8px}
+  .locked-price{font-family:var(--mono);font-weight:850;font-size:14px;color:var(--ink);display:block;line-height:1.6}
+  .locked-type{margin-top:3px;display:inline-flex}
+  .margin-muted{font-size:11px;color:var(--ink-soft);margin-top:3px}
+  .plan-date{width:128px;padding:6px 7px;font-size:12px}
+  .plan-hero{background:linear-gradient(0deg,#fffdf8,#fffdf8);border:1px solid var(--line);border-radius:13px;padding:18px;margin-bottom:16px}
+  .plan-hero-top{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;flex-wrap:wrap}
+  .plan-title-big{font-size:24px;font-weight:900;letter-spacing:-.6px}
+  .plan-period{font-family:var(--mono);font-size:19px;font-weight:850;margin-top:7px;color:var(--accent)}
+  .plan-subtitle{font-size:13px;color:var(--ink-soft);margin-top:7px}
+  .plan-edit-grid{display:grid;grid-template-columns:1.5fr 170px 170px 1.5fr;gap:10px;margin-top:14px}
+  @media(max-width:900px){.plan-edit-grid{grid-template-columns:1fr 1fr}.plan-title-big{font-size:20px}}
+  .plan-apply-btn{background:var(--good);border-color:var(--good);color:#fff}
+  .plan-apply-btn:disabled{background:#ddd5c7!important;color:#8b8377!important;cursor:not-allowed!important;opacity:1!important}
+  .board-list{display:grid;gap:10px}
+  .board-card{background:#fff;border:1px solid var(--line);border-radius:11px;padding:14px 15px;cursor:pointer;transition:.12s}
+  .board-card:hover{border-color:var(--ink);transform:translateY(-1px)}
+  .board-card-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+  .board-card-title{font-size:15px;font-weight:900}
+  .board-card-meta{font-size:12px;color:var(--ink-soft);margin-top:5px;line-height:1.5}
+  .board-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .backline{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+  .calc-board{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:960px){.calc-board{grid-template-columns:1fr}}
+  .calc-result{background:#efeadf;border-radius:12px;padding:18px;border:1px solid var(--line)}
+  .calc-result .big{font-family:var(--mono);font-size:34px;font-weight:900;letter-spacing:-1.2px;margin-top:8px}
+  .calc-result .subrow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+  .calc-mini{background:#fff;border:1px solid var(--line);border-radius:9px;padding:11px}
+  .calc-mini .k{font-size:11.5px;color:var(--ink-soft);font-weight:850}
+  .calc-mini .v{font-family:var(--mono);font-weight:850;margin-top:4px}
+  .scratch{width:100%;min-height:180px;border:1px solid var(--line-strong);border-radius:9px;padding:12px;font-family:inherit;font-size:13px;line-height:1.55;resize:vertical;background:#fff}
+  .calc-note{font-size:12px;color:var(--ink-soft);line-height:1.6;margin-top:10px}
+  .ladder-tools{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+  .ladder-input{width:96px;font-family:var(--mono);text-align:right;padding:6px 8px}
+  .ladder-small{width:76px;font-family:var(--mono);text-align:right;padding:6px 8px}
+  .per-unit{font-family:var(--mono);font-weight:900;color:var(--ink)}
+  .ok-flow{background:var(--good-soft);color:var(--good)}
+  .bad-flow{background:var(--bad-soft);color:var(--bad)}
+  .warn-flow{background:var(--warn-soft);color:var(--warn)}
+  .readonly-note{font-size:12px;color:var(--ink-soft);margin-top:8px}
+  .type-상시{background:#eee7d6;color:var(--ink-soft)}
+  .type-프로모션{background:var(--good-soft);color:var(--good)}
+  .type-판매중지{background:var(--bad-soft);color:var(--bad)}
+  .lockbar{display:flex;gap:9px;align-items:center;background:#efeadf;border-radius:9px;padding:10px 12px;margin-bottom:14px}
+  .lockbar b{font-size:13px}
+  .lockbar span{font-size:12.5px;color:var(--ink-soft)}
+  button.locked-on{background:var(--bad);border-color:var(--bad);color:#fff}
+  button.locked-off{background:var(--good);border-color:var(--good);color:#fff}
+  .plan-card{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:9px;background:#fff}
+  .plan-card.due{border-color:#e8cf94;background:var(--warn-soft)}
+  .plan-card.overdue{border-color:#eeb9b4;background:var(--bad-soft)}
+  .plan-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:8px}
+  .plan-title{font-weight:850}
+  .plan-meta{font-size:12px;color:var(--ink-soft);line-height:1.5}
+  .mini-select{width:88px;padding:6px 7px;font-size:12px}
+  .tag{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:800;padding:2px 8px;border-radius:20px;white-space:nowrap}
+  .t-ok{background:var(--good-soft);color:var(--good)}
+  .t-warn{background:var(--warn-soft);color:var(--warn)}
+  .t-bad{background:var(--bad-soft);color:var(--bad)}
+  .t-info{background:var(--info-soft);color:var(--info)}
+  .t-promo{background:var(--accent-soft);color:var(--accent)}
+  .t-normal{background:#eee7d6;color:var(--ink-soft)}
+  .small{font-size:11.5px;color:var(--ink-soft)}
+  .mono{font-family:var(--mono)}
+  .grid-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:12px}
+  label.fld{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:800;color:var(--ink-soft)}
+  .hint{font-size:12px;color:var(--ink-soft);background:#efeadf;border-radius:8px;padding:10px 13px;margin-bottom:14px;line-height:1.6}
+  .empty{text-align:center;padding:42px 20px;color:var(--ink-soft);font-size:13.5px}
+  .empty b{display:block;color:var(--ink);font-size:15px;margin-bottom:6px}
+  .modal-bg{position:fixed;inset:0;background:rgba(28,26,23,.55);z-index:50;display:none;align-items:flex-start;justify-content:center;padding:34px 16px;overflow:auto}
+  .modal-bg.on{display:flex}
+  .modal{background:var(--card);border-radius:14px;max-width:820px;width:100%;padding:22px 24px;border:1px solid var(--line-strong);box-shadow:0 24px 60px rgba(0,0,0,.28)}
+  .mh{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px}
+  .mh h3{font-size:17px;font-weight:850;margin-bottom:4px}
+  .mh p{font-size:12.5px;color:var(--ink-soft)}
+  .modal-foot{display:flex;justify-content:flex-end;gap:9px;margin-top:20px;border-top:1px solid var(--line);padding-top:16px}
+  .cost-grid{display:grid;grid-template-columns:1.2fr repeat(3,1fr);gap:8px;align-items:end;margin-top:8px}
+  .cost-grid .head{font-size:12px;color:var(--ink-soft);font-weight:850;padding:0 0 4px}
+  .cost-grid input{width:100%}
+  .comp-row{display:grid;grid-template-columns:1fr 110px 70px;gap:8px;margin-bottom:8px;align-items:end}
+  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:11px 20px;border-radius:9px;font-size:13px;font-weight:700;opacity:0;pointer-events:none;transition:.22s;z-index:90}
+  .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>판매가격 · 마진 관리 콘솔</h1>
+      <p>대시보드에서 바로 가격 수정 · 상시/프로모션 체크 · 제품별 원가/수수료/배송비/마케팅비로 권장 판매가 계산</p>
+    </div>
+    <div class="topbtns">
+      <button class="ghost tiny" onclick="exportCSV()">CSV 내보내기</button>
+      <button class="ghost tiny" onclick="backupJSON()">백업(JSON)</button>
+      <button class="ghost tiny" onclick="document.getElementById('imp').click()">복원</button>
+      <input type="file" id="imp" accept="application/json" style="display:none" onchange="restoreJSON(this)">
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button data-t="dash" class="on" onclick="go('dash')">가격 대시보드</button>
+    <button data-t="plan" onclick="go('plan')">예정 가격 대시보드</button>
+    <button data-t="prod" onclick="go('prod')">제품관리 · 가격산출</button>
+    <button data-t="calc" onclick="go('calc')">세트 가격 계산기</button>
+    <button data-t="hist" onclick="go('hist')">변경 히스토리</button>
+    <button data-t="set" onclick="go('set')">설정</button>
+  </nav>
+
+  <section id="s-dash" class="on">
+    <div class="stat-row" id="stats"></div>
+    <div class="panel">
+      <h2>제품별 현재 노출 가격</h2>
+      <div class="sub">별도 가격관리 탭 없이 이 표에서 바로 수정합니다. 각 마켓의 판매가와 구분을 입력하면 자동 저장되고, 최저가/최고가/마진율/경고가 계산됩니다.</div>
+      <div class="lockbar">
+        <button id="lockBtn" onclick="toggleLock()"></button>
+        <div><b id="lockTitle"></b><br><span id="lockDesc"></span></div>
+      </div>
+      <div class="filterbar">
+        <input id="dashSearch" placeholder="제품명 검색" oninput="renderDash()" style="min-width:190px">
+        <label class="small" style="display:flex;align-items:center;gap:6px">
+          <input type="checkbox" id="onlyIssue" onchange="renderDash()" style="width:auto"> 경고만 보기
+        </label>
+        <span class="right small" id="dashMeta"></span>
+      </div>
+      <div class="tablewrap"><table id="dashTbl"></table></div>
+    </div>
+  </section>
+
+
+  <section id="s-plan">
+    <div id="boardListView">
+      <div class="panel">
+        <h2>프로모션 예정 가격표 목록</h2>
+        <div class="sub">프로모션별로 별도의 예정 가격 대시보드를 작성합니다. 같은 기간이라도 마켓별/행사별로 각각 나눠 관리할 수 있습니다.</div>
+        <div class="filterbar">
+          <button class="primary" onclick="createBoard()">+ 프로모션 작성</button>
+          <input id="boardSearch" placeholder="프로모션명/메모 검색" oninput="renderBoardList()" style="min-width:220px">
+          <select id="boardFilter" onchange="renderBoardList()">
+            <option value="all">전체</option>
+            <option value="active">진행/예정</option>
+            <option value="done">적용 완료</option>
+          </select>
+          <span class="right small" id="boardMeta"></span>
+        </div>
+        <div id="boardList" class="board-list"></div>
+      </div>
+    </div>
+
+    <div id="boardDetailView" style="display:none">
+      <div class="backline">
+        <button class="ghost" onclick="backToBoardList()">← 목록으로</button>
+        <span class="small">프로모션별 예정 가격표를 작성하고, 최종 확인 후 현재 가격에 일괄 적용하세요.</span>
+      </div>
+
+      <div class="plan-hero">
+        <div class="plan-hero-top">
+          <div>
+            <div class="plan-title-big" id="planHeroTitle">프로모션 예정 가격표</div>
+            <div class="plan-period" id="planHeroPeriod">기간 미설정</div>
+            <div class="plan-subtitle" id="planHeroMemo">프로모션 타이틀 또는 안내 문구를 입력하세요.</div>
+            <div class="readonly-note" id="planLockDesc"></div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+            <button id="planLockBtn" onclick="togglePlanLock()"></button>
+            <button id="applyAllBtn" class="plan-apply-btn" onclick="applyAllPlans()">현재 가격에 일괄 적용</button>
+          </div>
+        </div>
+        <div id="planEditBox" class="plan-edit-grid">
+          <label class="fld">프로모션 타이틀
+            <input id="pm_title" value="" onchange="setPlanMeta('title',this.value)">
+          </label>
+          <label class="fld">시작일
+            <input type="date" id="pm_start" onchange="setPlanMeta('start',this.value)">
+          </label>
+          <label class="fld">종료일
+            <input type="date" id="pm_end" onchange="setPlanMeta('end',this.value)">
+          </label>
+          <label class="fld">부제목/메모
+            <input id="pm_memo" value="" placeholder="예: 쿠팡 타임딜 / 네이버 브랜드데이" onchange="setPlanMeta('memo',this.value)">
+          </label>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>예정 가격표</h2>
+        <div class="sub">현재 가격 대시보드와 동일한 레이아웃입니다. 이 프로모션에 해당하는 제품/마켓만 예정가를 입력해두면 됩니다.</div>
+        <div class="filterbar">
+          <input id="planSearch" placeholder="제품명 검색" oninput="renderPlans()" style="min-width:190px">
+          <label class="small" style="display:flex;align-items:center;gap:6px">
+            <input type="checkbox" id="onlyPlanFilled" onchange="renderPlans()" style="width:auto"> 입력된 제품만 보기
+          </label>
+          <span class="right small" id="planMeta"></span>
+        </div>
+        <div class="tablewrap"><table id="planTbl"></table></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="s-prod">
+    <div class="panel">
+      <h2>제품관리 · 단품/세트 단가 산출</h2>
+      <div class="sub">원가, 마켓별 수수료·배송비·마케팅비를 입력하면 현재 판매가 기준 마진과 목표 마진율 기준 권장 판매가를 계산합니다. 세트는 구성품 원가를 자동 합산합니다.</div>
+      <div style="display:flex;gap:9px;margin-bottom:14px;flex-wrap:wrap">
+        <button class="primary" onclick="openProduct()">+ 제품 추가</button>
+        <button onclick="openSet()">+ 세트 추가</button>
+        <button class="ghost right" onclick="seedDemo()">예시 데이터 채우기</button>
+      </div>
+      <div class="tablewrap"><table id="prodTbl"></table></div>
+    </div>
+  </section>
+
+
+
+  <section id="s-calc">
+    <div class="panel">
+      <h2>세트 가격 계산기 · 가격 사다리</h2>
+      <div class="sub">단품/2개/3개/4개 세트처럼 여러 구성을 한 번에 비교합니다. 많이 살수록 개당가가 낮아지는지, 구성별 마진율이 어떻게 달라지는지 바로 확인할 수 있습니다.</div>
+
+      <div class="grid-form">
+        <label class="fld">기준 단품 선택
+          <select id="calcBaseProd" onchange="resetLadderFromProduct()"></select>
+        </label>
+        <label class="fld">마켓 선택
+          <select id="calcMkt" onchange="renderLadderCalc()"></select>
+        </label>
+        <label class="fld">마케팅비 %
+          <input type="number" step="0.1" id="calcAd" placeholder="0" oninput="renderLadderCalc()">
+        </label>
+        <label class="fld">목표 마진율 %
+          <input type="number" step="0.1" id="calcTarget" placeholder="20" oninput="renderLadderCalc()">
+        </label>
+      </div>
+
+      <div class="hint" id="ladderFixedInfo"></div>
+
+      <div class="ladder-tools">
+        <button class="tiny" onclick="setLadderRows([1,2,3,4])">1/2/3/4개 기본세트</button>
+        <button class="tiny" onclick="addLadderRow()">+ 구성 추가</button>
+        <button class="tiny ghost" onclick="copyLadderFromCurrent()">현재 판매가 불러오기</button>
+      </div>
+
+      <div class="tablewrap">
+        <table id="ladderTbl"></table>
+      </div>
+
+      <div class="calc-note" id="ladderSummary"></div>
+      <textarea id="calcMemo" class="scratch" placeholder="낙서장: 가격 후보, 행사 조건, 대표님 공유 메모 등을 자유롭게 적어두세요." style="margin-top:14px"></textarea>
+    </div>
+  </section>
+
+  <section id="s-hist">
+    <div class="panel">
+      <h2>변경 히스토리</h2>
+      <div class="sub">가격, 구분, 원가, 비용, 제품 생성/삭제 기록이 자동으로 남습니다.</div>
+      <div class="filterbar">
+        <select id="hProd" onchange="renderHist()"><option value="">모든 제품</option></select>
+        <select id="hType" onchange="renderHist()">
+          <option value="">모든 종류</option>
+          <option value="price">가격/구분</option>
+          <option value="cost">원가/비용</option>
+          <option value="product">제품</option>
+        </select>
+        <button class="ghost tiny right" onclick="clearHist()">기록 비우기</button>
+      </div>
+      <div class="tablewrap"><table id="histTbl"></table></div>
+    </div>
+  </section>
+
+  <section id="s-set">
+    <div class="panel">
+      <h2>판매 마켓</h2>
+      <div class="sub">기본 마켓은 쿠팡/스마트스토어/자사몰입니다. 필요하면 추가하거나 삭제할 수 있습니다.</div>
+      <div style="display:flex;gap:8px;max-width:420px;margin-bottom:12px">
+        <input id="newMkt" placeholder="예: 올리브영" onkeydown="if(event.key==='Enter')addMarket()">
+        <button class="primary" onclick="addMarket()">추가</button>
+      </div>
+      <div id="mktList"></div>
+    </div>
+    <div class="panel">
+      <h2>데이터 관리</h2>
+      <div class="sub">브라우저 저장소에 저장됩니다. 중요한 데이터는 JSON 백업을 내려받아 보관하세요.</div>
+      <div style="display:flex;gap:9px;flex-wrap:wrap">
+        <button onclick="backupJSON()">전체 백업 내려받기</button>
+        <button onclick="document.getElementById('imp').click()">백업 파일로 복원</button>
+        <button class="danger right" onclick="resetAll()">전체 초기화</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="modal-bg" id="modalBg"><div class="modal" id="modal"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const KEY='simple_price_margin_console_v1';
+let S={markets:[],products:[],prices:{},hist:[],plans:[],locked:true};
+let curTab='dash';
+const uid=()=>Math.random().toString(36).slice(2,9);
+const today=()=>new Date().toLocaleDateString('sv-SE');
+const won=n=>(n===null||n===undefined||n==='')?'—':Number(n).toLocaleString('ko-KR')+'원';
+const pct=n=>(n===null||n===undefined||isNaN(n))?'—':Number(n).toFixed(1)+'%';
+const key=(pid,mid)=>pid+'__'+mid;
+const product=id=>S.products.find(p=>p.id===id);
+const market=id=>S.markets.find(m=>m.id===id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function defaults(){
+  if(!S.markets.length){
+    S.markets=[
+      {id:'coupang',name:'쿠팡',fee:10,ship:3000,ad:15},
+      {id:'smartstore',name:'스마트스토어',fee:6,ship:3000,ad:12},
+      {id:'ownmall',name:'자사몰',fee:3,ship:3000,ad:10}
+    ];
+  }
+}
+function load(){
+  try{ const raw=localStorage.getItem(KEY); if(raw) S=JSON.parse(raw); }catch(e){}
+  if(!S.markets)S.markets=[]; if(!S.products)S.products=[]; if(!S.prices)S.prices={}; if(!S.hist)S.hist=[];
+  if(S.locked===undefined)S.locked=true;
+  if(!S.boards){
+    S.boards=[];
+    if(S.plans&&S.plans.length){
+      S.boards.push({id:uid(),title:S.planMeta?.title||'프로모션 예정 가격표',start:S.planMeta?.start||'',end:S.planMeta?.end||'',memo:S.planMeta?.memo||'',locked:S.planLocked!==false,done:false,plans:S.plans});
+    }
+  }
+  if(!S.activeBoardId)S.activeBoardId='';
+  if(!S.plans)S.plans=[];
+  defaults();
+}
+function save(){ localStorage.setItem(KEY,JSON.stringify(S)); }
+function log(type,msg,pid){ S.hist.push({ts:Date.now(),type,msg,pid:pid||''}); if(S.hist.length>1500)S.hist=S.hist.slice(-1500); save(); }
+
+function go(t){
+  curTab=t;
+  document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+  document.querySelectorAll('section').forEach(s=>s.classList.remove('on'));
+  document.getElementById('s-'+t).classList.add('on');
+  renderAll();
+}
+function renderAll(){
+  refreshHistProduct();
+  renderStats();
+  if(curTab==='dash')renderDash();
+  if(curTab==='plan'){ if(S.activeBoardId)renderBoardDetail(); else renderBoardList(); }
+  if(curTab==='prod')renderProducts();
+  if(curTab==='calc')renderLadderCalc();
+  if(curTab==='hist')renderHist();
+  if(curTab==='set')renderSettings();
+}
+function refreshHistProduct(){
+  const h=document.getElementById('hProd'); if(!h)return;
+  const v=h.value;
+  h.innerHTML='<option value="">모든 제품</option>'+S.products.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
+  h.value=v;
+}
+
+function priceRow(pid,mid){
+  const k=key(pid,mid);
+  if(!S.prices[k]) S.prices[k]={price:'',type:'상시'};
+  return S.prices[k];
+}
+function productCost(p){
+  if(p.type==='set'){
+    let total=0, ok=true;
+    (p.components||[]).forEach(c=>{
+      const cp=product(c.productId);
+      if(!cp){ok=false; return;}
+      total += (Number(cp.cost)||0)*(Number(c.qty)||1);
+    });
+    return ok?total:0;
+  }
+  return Number(p.cost)||0;
+}
+function channelCost(p,m){
+  const c=p.costs?.[m.id]||{};
+  return {
+    fee: c.fee!=='' && c.fee!==undefined ? Number(c.fee) : Number(m.fee||0),
+    ship: c.ship!=='' && c.ship!==undefined ? Number(c.ship) : Number(m.ship||0),
+    ad: c.ad!=='' && c.ad!==undefined ? Number(c.ad) : Number(m.ad||0)
+  };
+}
+function marginInfo(p,m,price){
+  price=Number(price)||0;
+  const cost=productCost(p);
+  const cc=channelCost(p,m);
+  if(!price)return {profit:null,rate:null,feeCost:0,adCost:0,totalCost:cost+cc.ship};
+  const feeCost=price*cc.fee/100;
+  const adCost=price*cc.ad/100;
+  const profit=price-cost-feeCost-cc.ship-adCost;
+  return {profit,rate:profit/price*100,feeCost,adCost,totalCost:cost+feeCost+cc.ship+adCost};
+}
+function recommendedPrice(p,m,targetRate){
+  const cost=productCost(p);
+  const cc=channelCost(p,m);
+  const denom=1-(cc.fee/100)-(cc.ad/100)-(Number(targetRate||0)/100);
+  if(denom<=0)return null;
+  return Math.ceil((cost+cc.ship)/denom/100)*100;
+}
+function statusOf(p){
+  let vals=[]; let missing=false; let promo=false;
+  S.markets.forEach(m=>{
+    const r=priceRow(p.id,m.id);
+    if(!r.price) missing=true; else vals.push({m,v:Number(r.price),type:r.type});
+    if(r.type==='프로모션') promo=true;
+  });
+  if(missing)return {label:'가격 미입력',cls:'t-warn'};
+  if(vals.length>1){
+    const mn=Math.min(...vals.map(x=>x.v)), mx=Math.max(...vals.map(x=>x.v));
+    if(mn>0 && (mx-mn)/mn>=0.1)return {label:'가격편차 큼',cls:'t-bad'};
+  }
+  const own=S.markets.find(m=>m.name.includes('자사'));
+  const cp=S.markets.find(m=>m.name.includes('쿠팡'));
+  if(own&&cp){
+    const ownP=Number(priceRow(p.id,own.id).price)||0;
+    const cpP=Number(priceRow(p.id,cp.id).price)||0;
+    if(ownP&&cpP&&cpP<ownP)return {label:'쿠팡 최저가',cls:'t-bad'};
+  }
+  if(promo)return {label:'프로모션중',cls:'t-promo'};
+  return {label:'정상',cls:'t-ok'};
+}
+
+function renderStats(){
+  const issues=S.products.filter(p=>['t-bad','t-warn'].includes(statusOf(p).cls)).length;
+  const promos=S.products.reduce((a,p)=>a+S.markets.filter(m=>priceRow(p.id,m.id).type==='프로모션').length,0);
+  let margins=[];
+  S.products.forEach(p=>S.markets.forEach(m=>{
+    const r=priceRow(p.id,m.id);
+    const mi=marginInfo(p,m,r.price);
+    if(mi.rate!==null)margins.push(mi.rate);
+  }));
+  const avg=margins.length?margins.reduce((a,b)=>a+b,0)/margins.length:null;
+  document.getElementById('stats').innerHTML=`
+    <div class="stat"><div class="k">등록 제품</div><div class="v">${S.products.length}</div></div>
+    <div class="stat"><div class="k">판매 마켓</div><div class="v">${S.markets.length}</div></div>
+    <div class="stat"><div class="k">프로모션 표시</div><div class="v">${promos}</div></div>
+    <div class="stat ${issues?'bad':''}"><div class="k">확인 필요</div><div class="v">${issues}</div></div>
+    <div class="stat"><div class="k">평균 마진율</div><div class="v">${avg===null?'—':avg.toFixed(1)+'%'}</div></div>`;
+}
+
+
+function toggleLock(){
+  S.locked=!S.locked;
+  log('price',`가격 대시보드 ${S.locked?'잠금':'잠금해제'}`);
+  save(); renderAll();
+}
+function renderLockbar(){
+  const btn=document.getElementById('lockBtn');
+  const title=document.getElementById('lockTitle');
+  const desc=document.getElementById('lockDesc');
+  if(!btn||!title||!desc)return;
+  if(S.locked){
+    btn.textContent='🔒 잠금 상태';
+    btn.className='locked-on';
+    title.textContent='가격 수정 잠금 ON';
+    desc.textContent='실수 방지를 위해 판매가와 구분을 수정할 수 없습니다. 수정하려면 버튼을 눌러 잠금해제하세요.';
+  }else{
+    btn.textContent='🔓 잠금해제';
+    btn.className='locked-off';
+    title.textContent='가격 수정 가능';
+    desc.textContent='현재 판매가와 상시/프로모션 구분을 바로 수정할 수 있습니다. 수정 후 다시 잠가두세요.';
+  }
+}
+
+function renderDash(){
+  renderLockbar();
+  const tbl=document.getElementById('dashTbl');
+  if(!S.products.length){
+    tbl.innerHTML=`<tbody><tr><td><div class="empty"><b>등록된 제품이 없습니다</b>제품관리에서 제품을 추가하거나 예시 데이터를 채워보세요.</div></td></tr></tbody>`;
+    document.getElementById('dashMeta').textContent='';
+    return;
+  }
+  const q=(document.getElementById('dashSearch').value||'').trim();
+  const onlyIssue=document.getElementById('onlyIssue').checked;
+  let list=S.products.filter(p=>!q||p.name.includes(q));
+  if(onlyIssue)list=list.filter(p=>['t-bad','t-warn'].includes(statusOf(p).cls));
+  let h='<thead><tr><th>제품</th><th>구분</th>';
+  S.markets.forEach(m=>h+=`<th class="num">${esc(m.name)}<div class="small">판매가 / 구분</div></th>`);
+  h+='<th class="num">최저가</th><th class="num">최고가</th><th class="num">차액</th><th>상태</th></tr></thead><tbody>';
+  list.forEach(p=>{
+    let vals=[];
+    let cells='';
+    S.markets.forEach(m=>{
+      const r=priceRow(p.id,m.id);
+      if(r.price)vals.push(Number(r.price));
+      const mi=marginInfo(p,m,r.price);
+      const marginCls=mi.rate!==null && mi.rate<10?'t-bad':mi.rate!==null&&mi.rate<20?'t-warn':'t-ok';
+      cells+=`<td class="num">
+        ${S.locked
+          ? `<span class="locked-price">${won(r.price)}</span><span class="tag locked-type type-${r.type||'상시'}">${esc(r.type||'상시')}</span>`
+          : `<input class="price-input" type="number" value="${esc(r.price)}" placeholder="0" onchange="setPrice('${p.id}','${m.id}',this.value)">
+             <select class="mini-select" onchange="setPriceType('${p.id}','${m.id}',this.value)">
+               <option ${r.type==='상시'?'selected':''}>상시</option>
+               <option ${r.type==='프로모션'?'selected':''}>프로모션</option>
+               <option ${r.type==='판매중지'?'selected':''}>판매중지</option>
+             </select>`}
+      </td>`;
+    });
+    const mn=vals.length?Math.min(...vals):null, mx=vals.length?Math.max(...vals):null;
+    const st=statusOf(p);
+    h+=`<tr>
+      <td><b>${esc(p.name)}</b><div class="small">${esc(p.sku||'')} · 원가 ${won(productCost(p))}</div></td>
+      <td><span class="tag ${p.type==='set'?'t-info':'t-normal'}">${p.type==='set'?'세트':'단품'}</span></td>
+      ${cells}
+      <td class="num">${won(mn)}</td><td class="num">${won(mx)}</td><td class="num">${mn!==null&&mx!==null?won(mx-mn):'—'}</td>
+      <td><span class="tag ${st.cls}">${st.label}</span></td>
+    </tr>`;
+  });
+  tbl.innerHTML=h+'</tbody>';
+  document.getElementById('dashMeta').textContent=`${list.length}개 제품 · 표에서 바로 수정 가능`;
+}
+function setPrice(pid,mid,v){
+  const r=priceRow(pid,mid), old=r.price;
+  r.price=v===''?'':Number(v);
+  log('price',`${product(pid)?.name||''} · ${market(mid)?.name||''} 판매가 ${won(old)} → ${won(r.price)}`,pid);
+  save(); renderStats(); renderDash();
+}
+function setPriceType(pid,mid,v){
+  const r=priceRow(pid,mid), old=r.type;
+  r.type=v;
+  log('price',`${product(pid)?.name||''} · ${market(mid)?.name||''} 구분 ${old||'—'} → ${v}`,pid);
+  save(); renderStats(); renderDash();
+}
+
+
+function activeBoard(){
+  if(!S.activeBoardId&&S.boards.length)S.activeBoardId=S.boards[0].id;
+  return S.boards.find(b=>b.id===S.activeBoardId)||null;
+}
+function createBoard(){
+  const id=uid();
+  const b={id,title:'새 프로모션 예정 가격표',start:'',end:'',memo:'',locked:false,done:false,createdAt:Date.now(),appliedAt:null,plans:[]};
+  S.boards.unshift(b);
+  S.activeBoardId=id;
+  log('price','프로모션 예정 가격표 생성');
+  save(); renderBoardDetail();
+}
+function openBoard(id){
+  S.activeBoardId=id;
+  save(); renderBoardDetail();
+}
+function backToBoardList(){
+  S.activeBoardId='';
+  save(); renderBoardList();
+}
+function boardFilledCount(b){
+  return (b.plans||[]).filter(pl=>pl.price).length;
+}
+function boardStatus(b){
+  if(b.done)return {label:'적용 완료',cls:'t-ok'};
+  const t=today();
+  if(b.start&&b.start<t)return {label:'적용일 지남',cls:'t-bad'};
+  if(b.start&&b.start===t)return {label:'오늘 적용',cls:'t-warn'};
+  return {label:'예정/작성중',cls:'t-info'};
+}
+function renderBoardList(){
+  document.getElementById('boardListView').style.display='block';
+  document.getElementById('boardDetailView').style.display='none';
+  const q=(document.getElementById('boardSearch')?.value||'').trim();
+  const f=document.getElementById('boardFilter')?.value||'all';
+  let list=[...S.boards].sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  list=list.filter(b=>{
+    const hay=`${b.title||''} ${b.memo||''}`;
+    if(q&&!hay.includes(q))return false;
+    if(f==='done')return !!b.done;
+    if(f==='active')return !b.done;
+    return true;
+  });
+  const el=document.getElementById('boardList');
+  if(!list.length){
+    el.innerHTML='<div class="empty"><b>작성된 프로모션 예정 가격표가 없습니다</b>프로모션 작성 버튼으로 새 가격표를 만들어보세요.</div>';
+    document.getElementById('boardMeta').textContent='0건';
+    return;
+  }
+  el.innerHTML=list.map(b=>{
+    const st=boardStatus(b);
+    const period=(b.start||b.end)?`${b.start||'시작일 미정'} ~ ${b.end||'종료일 미정'}`:'기간 미설정';
+    const applied=b.appliedAt?`<br>적용완료일: ${new Date(b.appliedAt).toLocaleString('ko-KR')}`:'';
+    return `<div class="board-card">
+      <div class="board-card-top" onclick="openBoard('${b.id}')">
+        <div>
+          <div class="board-card-title">${esc(b.title||'제목 없음')}</div>
+          <div class="board-card-meta">${period}<br>${esc(b.memo||'메모 없음')} · 입력된 예정가 ${boardFilledCount(b)}개${applied}</div>
+        </div>
+        <span class="tag ${st.cls}">${st.label}</span>
+      </div>
+      <div class="board-actions" style="margin-top:10px">
+        <button class="tiny" onclick="openBoard('${b.id}')">열기</button>
+        <button class="tiny" onclick="duplicateBoard('${b.id}')">복제</button>
+        <button class="tiny danger" onclick="deleteBoard('${b.id}')">삭제</button>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('boardMeta').textContent=`${list.length}건`;
+}
+function renderBoardDetail(){
+  if(!activeBoard()){
+    renderBoardList();
+    return;
+  }
+  document.getElementById('boardListView').style.display='none';
+  document.getElementById('boardDetailView').style.display='block';
+  renderPlans();
+}
+function duplicateBoard(id){
+  const b=S.boards.find(x=>x.id===id); if(!b)return;
+  const nb=JSON.parse(JSON.stringify(b));
+  nb.id=uid(); nb.title=(b.title||'프로모션')+' 복사본'; nb.done=false; nb.locked=false; nb.createdAt=Date.now(); nb.appliedAt=null;
+  nb.plans=(nb.plans||[]).map(pl=>({...pl,id:uid(),done:false,doneAt:null}));
+  S.boards.unshift(nb);
+  log('price',`프로모션 예정 가격표 복제: ${b.title||''}`);
+  save(); renderBoardList(); toast('복제되었습니다');
+}
+function deleteBoard(id){
+  const b=S.boards.find(x=>x.id===id); if(!b)return;
+  if(!confirm(`'${b.title||'제목 없음'}' 가격표를 삭제할까요?`))return;
+  S.boards=S.boards.filter(x=>x.id!==id);
+  if(S.activeBoardId===id)S.activeBoardId='';
+  log('price',`프로모션 예정 가격표 삭제: ${b.title||''}`);
+  save(); renderBoardList(); toast('삭제되었습니다');
+}
+function plannedRow(pid,mid){
+  const b=activeBoard();
+  if(!b)return null;
+  if(!b.plans)b.plans=[];
+  let pl=b.plans.find(x=>x.pid===pid&&x.mid===mid&&!x.done);
+  if(!pl){
+    pl={id:uid(),pid,mid,price:'',type:'프로모션',done:false};
+    b.plans.push(pl);
+  }
+  return pl;
+}
+function renderPlanHero(){
+  const b=activeBoard(); if(!b)return;
+  document.getElementById('planHeroTitle').textContent=b.title||'프로모션 예정 가격표';
+  const period=(b.start||b.end)?`${b.start||'시작일 미정'} ~ ${b.end||'종료일 미정'}`:'기간 미설정';
+  document.getElementById('planHeroPeriod').textContent=period;
+  document.getElementById('planHeroMemo').textContent=b.memo||'프로모션 타이틀 또는 안내 문구를 입력하세요.';
+  document.getElementById('pm_title').value=b.title||'';
+  document.getElementById('pm_start').value=b.start||'';
+  document.getElementById('pm_end').value=b.end||'';
+  document.getElementById('pm_memo').value=b.memo||'';
+  const edit=document.getElementById('planEditBox');
+  const btn=document.getElementById('planLockBtn');
+  const apply=document.getElementById('applyAllBtn');
+  const desc=document.getElementById('planLockDesc');
+  if(b.locked){
+    btn.textContent='🔒 잠금 상태';
+    btn.className='locked-on';
+    edit.style.display='none';
+    apply.disabled=true;
+    desc.textContent='잠금 상태입니다. 예정 가격표 수정 및 일괄 적용이 불가능합니다.';
+  }else{
+    btn.textContent='🔓 잠금해제';
+    btn.className='locked-off';
+    edit.style.display='grid';
+    apply.disabled=false;
+    desc.textContent='잠금해제 상태입니다. 예정 가격표 수정 후 일괄 적용할 수 있습니다.';
+  }
+}
+function togglePlanLock(){
+  const b=activeBoard(); if(!b)return;
+  b.locked=!b.locked;
+  log('price',`예정 가격표 ${b.locked?'잠금':'잠금해제'}: ${b.title||''}`);
+  save(); renderPlans();
+}
+function setPlanMeta(field,v){
+  const b=activeBoard(); if(!b)return;
+  b[field]=v;
+  log('price',`예정 가격표 ${field} 수정: ${v||'—'}`);
+  save(); renderPlanHero();
+}
+function renderPlans(){
+  const b=activeBoard();
+  if(!b){ renderBoardList(); return; }
+  renderPlanHero();
+  const tbl=document.getElementById('planTbl');
+  if(!S.products.length){
+    tbl.innerHTML=`<tbody><tr><td><div class="empty"><b>등록된 제품이 없습니다</b>제품관리에서 제품을 먼저 추가하세요.</div></td></tr></tbody>`;
+    document.getElementById('planMeta').textContent='';
+    return;
+  }
+  const q=(document.getElementById('planSearch')?.value||'').trim();
+  const onlyFilled=document.getElementById('onlyPlanFilled')?.checked;
+  let list=S.products.filter(p=>!q||p.name.includes(q));
+  if(onlyFilled){
+    list=list.filter(p=>S.markets.some(m=>{
+      const pl=plannedRow(p.id,m.id);
+      return pl.price || pl.type!=='프로모션';
+    }));
+  }
+  let filledCount=0;
+  let h='<thead><tr><th>제품</th><th>구분</th>';
+  S.markets.forEach(m=>h+=`<th class="num">${esc(m.name)}<div class="small">예정 판매가 / 구분</div></th>`);
+  h+='<th class="num">최저가</th><th class="num">최고가</th><th class="num">차액</th><th>상태</th></tr></thead><tbody>';
+  list.forEach(p=>{
+    let vals=[], cells='', hasAny=false;
+    S.markets.forEach(m=>{
+      const pl=plannedRow(p.id,m.id);
+      const cur=priceRow(p.id,m.id);
+      if(pl.price){vals.push(Number(pl.price)); hasAny=true; filledCount++;}
+      const type=pl.type||'프로모션';
+      cells+=`<td class="num">
+        ${b.locked
+          ? `<span class="locked-price">${pl.price?won(pl.price):'—'}</span><span class="tag locked-type type-${type}">${esc(type)}</span>`
+          : `<input class="price-input" type="number" value="${esc(pl.price)}" placeholder="예정가" onchange="setPlanField('${pl.id}','price',this.value)">
+             <select class="mini-select" onchange="setPlanField('${pl.id}','type',this.value)">
+               <option ${type==='상시'?'selected':''}>상시</option>
+               <option ${type==='프로모션'?'selected':''}>프로모션</option>
+               <option ${type==='판매중지'?'selected':''}>판매중지</option>
+             </select>`}
+        <div class="small">현재 ${won(cur.price)} / ${esc(cur.type||'—')}</div>
+      </td>`;
+    });
+    const mn=vals.length?Math.min(...vals):null, mx=vals.length?Math.max(...vals):null;
+    const st=hasAny?{label:'예정 입력됨',cls:'t-info'}:{label:'미입력',cls:'t-normal'};
+    h+=`<tr>
+      <td><b>${esc(p.name)}</b><div class="small">${esc(p.sku||'')}</div></td>
+      <td><span class="tag ${p.type==='set'?'t-info':'t-normal'}">${p.type==='set'?'세트':'단품'}</span></td>
+      ${cells}
+      <td class="num">${won(mn)}</td><td class="num">${won(mx)}</td><td class="num">${mn!==null&&mx!==null?won(mx-mn):'—'}</td>
+      <td><span class="tag ${st.cls}">${st.label}</span></td>
+    </tr>`;
+  });
+  tbl.innerHTML=h+'</tbody>';
+  document.getElementById('planMeta').textContent=`${list.length}개 제품 · 입력된 예정가 ${filledCount}개`;
+  save();
+}
+function setPlanField(id,field,v){
+  const b=activeBoard(); if(!b)return;
+  if(b.locked){toast('잠금해제 후 수정할 수 있습니다');return;}
+  const pl=(b.plans||[]).find(x=>x.id===id); if(!pl)return;
+  const old=pl[field];
+  pl[field]=field==='price'?(v===''?'':Number(v)):v;
+  log('price',`예정 가격 ${field==='price'?'판매가':'구분'} 수정: ${product(pl.pid)?.name||''} · ${market(pl.mid)?.name||''} ${old||'—'} → ${pl[field]||'—'}`,pl.pid);
+  save(); renderPlans();
+}
+function applyAllPlans(){
+  const b=activeBoard(); if(!b)return;
+  if(b.locked){toast('잠금해제 후 적용할 수 있습니다');return;}
+  const targets=(b.plans||[]).filter(pl=>!pl.done&&pl.price);
+  if(!targets.length){toast('적용할 예정 가격이 없습니다');return;}
+  if(!confirm(`'${b.title||'프로모션 예정 가격표'}'의 예정 가격 ${targets.length}개를 현재 가격 대시보드에 일괄 적용할까요?`))return;
+  targets.forEach(pl=>{
+    const r=priceRow(pl.pid,pl.mid);
+    const before=`${won(r.price)} / ${r.type}`;
+    r.price=Number(pl.price);
+    r.type=pl.type||'프로모션';
+    pl.done=true;
+    pl.doneAt=Date.now();
+    log('price',`예정 가격 일괄 적용: ${b.title||''} · ${product(pl.pid)?.name||''} · ${market(pl.mid)?.name||''} ${before} → ${won(r.price)} / ${r.type}`,pl.pid);
+  });
+  b.done=true;
+  b.locked=true;
+  b.appliedAt=Date.now();
+  save(); renderAll(); toast('현재 가격에 일괄 적용했습니다');
+}
+function applyPlan(id){
+  const b=activeBoard(); if(!b)return;
+  const pl=(b.plans||[]).find(x=>x.id===id); if(!pl)return;
+  if(!pl.price){toast('예정 판매가를 먼저 입력하세요');return;}
+  const r=priceRow(pl.pid,pl.mid);
+  const before=`${won(r.price)} / ${r.type}`;
+  r.price=Number(pl.price);
+  r.type=pl.type||'프로모션';
+  pl.done=true;
+  pl.doneAt=Date.now();
+  log('price',`예정 가격 적용: ${product(pl.pid)?.name||''} · ${market(pl.mid)?.name||''} ${before} → ${won(r.price)} / ${r.type}`,pl.pid);
+  save(); renderAll(); toast('현재 가격에 적용했습니다');
+}
+function clearPlan(id){
+  const b=activeBoard(); if(!b)return;
+  const pl=(b.plans||[]).find(x=>x.id===id); if(!pl)return;
+  pl.price=''; pl.type='프로모션'; pl.done=false; delete pl.doneAt;
+  log('price',`예정 가격 비우기: ${product(pl.pid)?.name||''} · ${market(pl.mid)?.name||''}`,pl.pid);
+  save(); renderPlans(); toast('비웠습니다');
+}
+function undoPlan(id){
+  const b=activeBoard(); if(!b)return;
+  const pl=(b.plans||[]).find(x=>x.id===id); if(!pl)return;
+  pl.done=false; delete pl.doneAt; b.done=false;
+  log('price',`예정 가격 완료 취소: ${product(pl.pid)?.name||''} · ${market(pl.mid)?.name||''}`,pl.pid);
+  save(); renderAll(); toast('완료 상태를 취소했습니다');
+}
+function deletePlan(id){
+  const b=activeBoard(); if(!b)return;
+  b.plans=(b.plans||[]).filter(x=>x.id!==id);
+  save(); renderAll();
+}
+
+
+function renderProducts(){
+  const tbl=document.getElementById('prodTbl');
+  if(!S.products.length){
+    tbl.innerHTML=`<tbody><tr><td><div class="empty"><b>등록된 제품이 없습니다</b>단품을 먼저 등록한 뒤 세트를 만들 수 있습니다.</div></td></tr></tbody>`;
+    return;
+  }
+  let h='<thead><tr><th>제품명</th><th>구분</th><th class="num">원가</th>';
+  S.markets.forEach(m=>h+=`<th class="num">${esc(m.name)}<div class="small">현재마진 / 권장가</div></th>`);
+  h+='<th>관리</th></tr></thead><tbody>';
+  S.products.forEach(p=>{
+    let ch='';
+    S.markets.forEach(m=>{
+      const price=priceRow(p.id,m.id).price;
+      const mi=marginInfo(p,m,price);
+      const rec=recommendedPrice(p,m,p.targetMargin||20);
+      ch+=`<td class="num">
+        <div>현재 ${pct(mi.rate)}</div>
+        <div class="small">권장 ${won(rec)}</div>
+      </td>`;
+    });
+    const comp=p.type==='set'?`<div class="small">${(p.components||[]).map(c=>`${esc(product(c.productId)?.name||'?')}×${c.qty}`).join(' + ')}</div>`:'';
+    h+=`<tr>
+      <td><b>${esc(p.name)}</b><div class="small">${esc(p.sku||'')}</div>${comp}</td>
+      <td><span class="tag ${p.type==='set'?'t-info':'t-normal'}">${p.type==='set'?'세트':'단품'}</span></td>
+      <td class="num">${won(productCost(p))}</td>
+      ${ch}
+      <td>
+        <button class="tiny" onclick="${p.type==='set'?`openSet('${p.id}')`:`openProduct('${p.id}')`}">수정</button>
+        <button class="tiny danger" onclick="deleteProduct('${p.id}')">삭제</button>
+      </td>
+    </tr>`;
+  });
+  tbl.innerHTML=h+'</tbody>';
+}
+
+function productFormCommon(p){
+  let costs='';
+  S.markets.forEach(m=>{
+    const c=p?.costs?.[m.id]||{};
+    costs+=`
+      <div class="head">${esc(m.name)}</div>
+      <label class="fld">수수료 %
+        <input type="number" step="0.1" id="fee_${m.id}" value="${c.fee??m.fee??0}">
+      </label>
+      <label class="fld">배송비
+        <input type="number" id="ship_${m.id}" value="${c.ship??m.ship??0}">
+      </label>
+      <label class="fld">마케팅비 %
+        <input type="number" step="0.1" id="ad_${m.id}" value="${c.ad??m.ad??0}">
+      </label>`;
+  });
+  return `
+    <label class="fld">제품명
+      <input id="p_name" value="${esc(p?.name||'')}" placeholder="예: 유기농 레몬즙 100포">
+    </label>
+    <div class="grid-form" style="margin-top:10px">
+      <label class="fld">SKU/관리코드
+        <input id="p_sku" value="${esc(p?.sku||'')}" placeholder="선택">
+      </label>
+      <label class="fld">목표 마진율 %
+        <input type="number" step="0.1" id="p_target" value="${p?.targetMargin??20}">
+      </label>
+    </div>
+    <div class="hint">마켓별 비용은 비워둘 수 없도록 기본값이 들어갑니다. 제품별로 다르면 여기서 덮어쓰면 됩니다.</div>
+    <div class="cost-grid">
+      ${costs}
+    </div>`;
+}
+function openProduct(id){
+  const p=id?product(id):null;
+  showModal(id?'단품 수정':'단품 추가','원가와 마켓별 비용을 입력하면 권장 판매가가 자동 계산됩니다.',
+    `${productFormCommon(p)}
+     <label class="fld" style="margin-top:12px">제품 원가
+       <input type="number" id="p_cost" value="${p?.cost??''}" placeholder="0">
+     </label>`,
+    `<button class="primary" onclick="saveProduct('${id||''}')">저장</button>`);
+}
+function saveProduct(id){
+  const name=document.getElementById('p_name').value.trim();
+  if(!name){toast('제품명을 입력하세요');return;}
+  const obj=id?product(id):{id:uid(),type:'single'};
+  obj.name=name;
+  obj.sku=document.getElementById('p_sku').value.trim();
+  obj.cost=Number(document.getElementById('p_cost').value)||0;
+  obj.targetMargin=Number(document.getElementById('p_target').value)||20;
+  obj.costs=readCosts();
+  if(!id)S.products.push(obj);
+  log(id?'cost':'product',`${id?'단품 수정':'단품 추가'}: ${name}`,obj.id);
+  save(); closeModal(); renderAll(); toast('저장되었습니다');
+}
+function openSet(id){
+  const p=id?product(id):null;
+  const singles=S.products.filter(x=>x.type==='single');
+  if(!singles.length){toast('세트를 만들려면 단품을 먼저 등록하세요');return;}
+  let body=`${productFormCommon(p)}
+    <div class="hint">세트 원가는 구성품 원가 × 수량으로 자동 합산됩니다.</div>
+    <div id="compWrap"></div>
+    <button class="tiny ghost" onclick="addCompRow()">+ 구성품 추가</button>`;
+  showModal(id?'세트 수정':'세트 추가','구성품을 선택하면 세트 원가가 자동 합산됩니다.',body,
+    `<button class="primary" onclick="saveSet('${id||''}')">저장</button>`);
+  setTimeout(()=>{
+    const comps=p?.components?.length?p.components:[{productId:singles[0].id,qty:1}];
+    comps.forEach(c=>addCompRow(c.productId,c.qty));
+  },0);
+}
+function addCompRow(pid,qty){
+  const w=document.getElementById('compWrap'); if(!w)return;
+  const singles=S.products.filter(x=>x.type==='single');
+  const div=document.createElement('div'); div.className='comp-row';
+  div.innerHTML=`
+    <label class="fld">구성품
+      <select class="comp-p">${singles.map(s=>`<option value="${s.id}" ${pid===s.id?'selected':''}>${esc(s.name)} / 원가 ${won(s.cost||0)}</option>`).join('')}</select>
+    </label>
+    <label class="fld">수량
+      <input class="comp-q" type="number" min="1" value="${qty||1}">
+    </label>
+    <button class="tiny danger" onclick="this.parentElement.remove()">삭제</button>`;
+  w.appendChild(div);
+}
+function saveSet(id){
+  const name=document.getElementById('p_name').value.trim();
+  if(!name){toast('세트명을 입력하세요');return;}
+  const ps=[...document.querySelectorAll('.comp-p')];
+  const qs=[...document.querySelectorAll('.comp-q')];
+  const comps=ps.map((s,i)=>({productId:s.value,qty:Math.max(1,Number(qs[i].value)||1)}));
+  const obj=id?product(id):{id:uid(),type:'set'};
+  obj.name=name;
+  obj.sku=document.getElementById('p_sku').value.trim();
+  obj.targetMargin=Number(document.getElementById('p_target').value)||20;
+  obj.components=comps;
+  obj.costs=readCosts();
+  if(!id)S.products.push(obj);
+  log(id?'cost':'product',`${id?'세트 수정':'세트 추가'}: ${name}`,obj.id);
+  save(); closeModal(); renderAll(); toast('저장되었습니다');
+}
+function readCosts(){
+  const costs={};
+  S.markets.forEach(m=>{
+    costs[m.id]={
+      fee:Number(document.getElementById('fee_'+m.id).value)||0,
+      ship:Number(document.getElementById('ship_'+m.id).value)||0,
+      ad:Number(document.getElementById('ad_'+m.id).value)||0
+    };
+  });
+  return costs;
+}
+function deleteProduct(id){
+  const p=product(id); if(!p)return;
+  const used=S.products.some(x=>x.type==='set'&&(x.components||[]).some(c=>c.productId===id));
+  if(used){toast('세트 구성품으로 사용 중입니다. 세트에서 먼저 제거하세요.');return;}
+  if(!confirm(`'${p.name}' 제품을 삭제할까요? 가격 데이터도 함께 삭제됩니다.`))return;
+  S.products=S.products.filter(x=>x.id!==id);
+  Object.keys(S.prices).forEach(k=>{if(k.startsWith(id+'__'))delete S.prices[k];});
+  log('product',`제품 삭제: ${p.name}`,id);
+  save(); renderAll(); toast('삭제되었습니다');
+}
+
+
+
+let ladderRows=[{qty:1,price:''},{qty:2,price:''},{qty:3,price:''},{qty:4,price:''}];
+
+function renderLadderCalc(){
+  const pSel=document.getElementById('calcBaseProd');
+  const mSel=document.getElementById('calcMkt');
+  if(!pSel||!mSel)return;
+
+  const oldP=pSel.value, oldM=mSel.value;
+  const singles=S.products.filter(p=>p.type==='single');
+  pSel.innerHTML=singles.length?singles.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join(''):'<option value="">단품을 먼저 등록하세요</option>';
+  mSel.innerHTML=S.markets.length?S.markets.map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join(''):'<option value="">마켓을 먼저 등록하세요</option>';
+  if([...pSel.options].some(o=>o.value===oldP))pSel.value=oldP;
+  if([...mSel.options].some(o=>o.value===oldM))mSel.value=oldM;
+
+  const p=product(pSel.value);
+  const m=market(mSel.value);
+  if(p&&m){
+    const c=channelCost(p,m);
+    if(!document.getElementById('calcAd').value && c.ad!==undefined)document.getElementById('calcAd').value=c.ad;
+    if(!document.getElementById('calcTarget').value)document.getElementById('calcTarget').value=p.targetMargin||20;
+  }
+  renderLadderTable();
+}
+function resetLadderFromProduct(){
+  ladderRows=[{qty:1,price:''},{qty:2,price:''},{qty:3,price:''},{qty:4,price:''}];
+  copyLadderFromCurrent(false);
+  renderLadderCalc();
+}
+function setLadderRows(qtys){
+  ladderRows=qtys.map(q=>({qty:q,price:''}));
+  copyLadderFromCurrent(false);
+  renderLadderTable();
+}
+function addLadderRow(){
+  const next=(ladderRows.reduce((a,r)=>Math.max(a,Number(r.qty)||0),0)||0)+1;
+  ladderRows.push({qty:next,price:''});
+  renderLadderTable();
+}
+function removeLadderRow(idx){
+  ladderRows.splice(idx,1);
+  renderLadderTable();
+}
+function updateLadder(idx,field,val){
+  if(!ladderRows[idx])return;
+  ladderRows[idx][field]=field==='qty'?Math.max(1,Number(val)||1):(val===''?'':Number(val));
+  renderLadderTable();
+}
+function copyLadderFromCurrent(showToast=true){
+  const base=product(document.getElementById('calcBaseProd')?.value);
+  const m=market(document.getElementById('calcMkt')?.value);
+  if(!base||!m)return;
+  ladderRows.forEach(r=>{
+    let matched=null;
+    if(Number(r.qty)===1){
+      matched=priceRow(base.id,m.id).price;
+    }else{
+      const bundle=S.products.find(p=>p.type==='set' && (p.components||[]).length===1 && p.components[0].productId===base.id && Number(p.components[0].qty)===Number(r.qty));
+      if(bundle)matched=priceRow(bundle.id,m.id).price;
+    }
+    if(matched)r.price=Number(matched);
+  });
+  if(showToast)toast('현재 등록된 판매가를 불러왔습니다');
+  renderLadderTable();
+}
+function ladderCalcRow(base,m,row,baseUnitPrice){
+  const qty=Number(row.qty)||1;
+  const price=Number(row.price)||0;
+  const fixed=channelCost(base,m);
+  const ad=Number(document.getElementById('calcAd').value)||0;
+  const target=Number(document.getElementById('calcTarget').value)||0;
+  const unitCost=productCost(base);
+  const totalCost=unitCost*qty;
+  const feeCost=price*fixed.fee/100;
+  const adCost=price*ad/100;
+  const profit=price-totalCost-feeCost-fixed.ship-adCost;
+  const rate=price?profit/price*100:null;
+  const perUnit=price?price/qty:null;
+  const discount=(baseUnitPrice&&perUnit)?(1-perUnit/baseUnitPrice)*100:null;
+  const denom=1-(fixed.fee/100)-(ad/100)-(target/100);
+  const rec=denom>0?Math.ceil((totalCost+fixed.ship)/denom/100)*100:null;
+  return {qty,price,fixed,ad,target,unitCost,totalCost,feeCost,adCost,profit,rate,perUnit,discount,rec};
+}
+function renderLadderTable(){
+  const tbl=document.getElementById('ladderTbl');
+  const base=product(document.getElementById('calcBaseProd')?.value);
+  const m=market(document.getElementById('calcMkt')?.value);
+  if(!tbl)return;
+  if(!base||!m){
+    tbl.innerHTML=`<tbody><tr><td><div class="empty"><b>기준 단품과 마켓을 선택하세요</b>제품관리에서 단품을 먼저 등록해야 합니다.</div></td></tr></tbody>`;
+    document.getElementById('ladderFixedInfo').textContent='선택된 제품/마켓이 없습니다.';
+    document.getElementById('ladderSummary').textContent='';
+    return;
+  }
+  const fixed=channelCost(base,m);
+  const unitCost=productCost(base);
+  const ad=Number(document.getElementById('calcAd').value)||0;
+  const target=Number(document.getElementById('calcTarget').value)||0;
+
+  document.getElementById('ladderFixedInfo').innerHTML=
+    `고정값: 기준 단품 원가 <b>${won(unitCost)}</b> · ${esc(m.name)} 수수료 <b>${fixed.fee}%</b> · 배송비 <b>${won(fixed.ship)}</b> · 현재 입력 마케팅비 <b>${ad}%</b>`;
+
+  const sorted=[...ladderRows].sort((a,b)=>(Number(a.qty)||0)-(Number(b.qty)||0));
+  const baseRow=sorted.find(r=>Number(r.qty)===1);
+  const baseUnitPrice=baseRow&&baseRow.price?Number(baseRow.price):null;
+
+  let prevUnit=null, flowOk=true, warnings=[];
+  let h=`<thead><tr>
+    <th class="num">구성</th>
+    <th class="num">판매가</th>
+    <th class="num">개당 판매가</th>
+    <th class="num">단품 대비 할인율</th>
+    <th class="num">총 원가</th>
+    <th class="num">마진액</th>
+    <th class="num">마진율</th>
+    <th class="num">목표마진 권장가</th>
+    <th>판정</th>
+    <th></th>
+  </tr></thead><tbody>`;
+
+  sorted.forEach((r,displayIdx)=>{
+    const idx=ladderRows.indexOf(r);
+    const c=ladderCalcRow(base,m,r,baseUnitPrice);
+    let status='정상', cls='ok-flow';
+    if(c.price){
+      if(prevUnit!==null && c.perUnit>=prevUnit){
+        status='개당가 역전';
+        cls='bad-flow';
+        flowOk=false;
+        warnings.push(`${c.qty}개 세트의 개당가가 이전 구성보다 낮지 않습니다.`);
+      }else if(c.rate!==null && c.rate<10){
+        status='마진 낮음';
+        cls='warn-flow';
+      }
+      prevUnit=c.perUnit;
+    }else{
+      status='가격 미입력';
+      cls='warn-flow';
+    }
+    h+=`<tr>
+      <td class="num">
+        <input class="ladder-small" type="number" value="${esc(c.qty)}" min="1" onchange="updateLadder(${idx},'qty',this.value)"> 개
+      </td>
+      <td class="num">
+        <input class="ladder-input" type="number" value="${esc(r.price)}" placeholder="판매가" onchange="updateLadder(${idx},'price',this.value)">
+      </td>
+      <td class="num"><span class="per-unit">${c.perUnit?won(Math.round(c.perUnit)):'—'}</span></td>
+      <td class="num">${c.discount!==null?c.discount.toFixed(1)+'%':'—'}</td>
+      <td class="num">${won(c.totalCost)}</td>
+      <td class="num">${c.price?won(Math.round(c.profit)):'—'}</td>
+      <td class="num">${c.rate!==null?c.rate.toFixed(1)+'%':'—'}</td>
+      <td class="num">${c.rec?won(c.rec):'계산불가'}</td>
+      <td><span class="tag ${cls}">${status}</span></td>
+      <td><button class="tiny danger" onclick="removeLadderRow(${idx})">삭제</button></td>
+    </tr>`;
+  });
+  tbl.innerHTML=h+'</tbody>';
+
+  const entered=sorted.filter(r=>r.price).length;
+  const avgRate=sorted.map(r=>ladderCalcRow(base,m,r,baseUnitPrice).rate).filter(v=>v!==null);
+  const avg=avgRate.length?avgRate.reduce((a,b)=>a+b,0)/avgRate.length:null;
+  const flowMsg=flowOk?'개당가 구조가 정상입니다. 많이 살수록 개당 판매가가 낮아집니다.':'개당가 역전 구간이 있습니다. 세트 가격을 조정하세요.';
+  document.getElementById('ladderSummary').innerHTML=
+    `<b>요약:</b> 입력된 구성 ${entered}개 · 평균 마진율 ${avg===null?'—':avg.toFixed(1)+'%'} · ${flowMsg}`+
+    (warnings.length?`<br><span style="color:var(--bad)">${warnings.join(' ')}</span>`:'')+
+    `<br>계산식: 판매가 - (단품원가 × 구성수량) - (판매가 × 수수료율) - 배송비 - (판매가 × 마케팅비율)`;
+}
+
+
+function renderHist(){
+  const fp=document.getElementById('hProd').value, ft=document.getElementById('hType').value;
+  let list=[...S.hist].reverse().filter(e=>(!fp||e.pid===fp)&&(!ft||e.type===ft));
+  const tbl=document.getElementById('histTbl');
+  if(!list.length){tbl.innerHTML=`<tbody><tr><td><div class="empty"><b>기록이 없습니다</b>변경하면 여기에 자동 기록됩니다.</div></td></tr></tbody>`;return;}
+  let h='<thead><tr><th>일시</th><th>종류</th><th>내용</th></tr></thead><tbody>';
+  const tag={price:'t-promo',cost:'t-info',product:'t-normal'};
+  const name={price:'가격/구분',cost:'원가/비용',product:'제품'};
+  list.slice(0,500).forEach(e=>{
+    h+=`<tr><td class="small">${new Date(e.ts).toLocaleString('ko-KR')}</td><td><span class="tag ${tag[e.type]||'t-normal'}">${name[e.type]||e.type}</span></td><td>${esc(e.msg)}</td></tr>`;
+  });
+  tbl.innerHTML=h+'</tbody>';
+}
+function clearHist(){ if(!confirm('변경 히스토리를 모두 비울까요?'))return; S.hist=[]; save(); renderHist(); toast('기록을 비웠습니다'); }
+
+function renderSettings(){
+  document.getElementById('mktList').innerHTML=S.markets.map(m=>`
+    <div style="display:grid;grid-template-columns:1fr 90px 90px 90px 70px;gap:8px;align-items:center;margin-bottom:8px">
+      <input value="${esc(m.name)}" onchange="editMarket('${m.id}','name',this.value)">
+      <input type="number" step="0.1" value="${m.fee??0}" onchange="editMarket('${m.id}','fee',this.value)" title="기본 수수료 %">
+      <input type="number" value="${m.ship??0}" onchange="editMarket('${m.id}','ship',this.value)" title="기본 배송비">
+      <input type="number" step="0.1" value="${m.ad??0}" onchange="editMarket('${m.id}','ad',this.value)" title="기본 마케팅비 %">
+      <button class="tiny danger" onclick="deleteMarket('${m.id}')">삭제</button>
+    </div>`).join('') + `<div class="small">순서: 마켓명 / 기본 수수료% / 기본 배송비 / 기본 마케팅비%</div>`;
+}
+function addMarket(){
+  const name=document.getElementById('newMkt').value.trim(); if(!name)return;
+  S.markets.push({id:uid(),name,fee:0,ship:3000,ad:0});
+  document.getElementById('newMkt').value='';
+  log('product',`마켓 추가: ${name}`); save(); renderAll(); toast('마켓이 추가되었습니다');
+}
+function editMarket(id,field,v){
+  const m=market(id); const old=m[field];
+  m[field]=field==='name'?v:Number(v)||0;
+  log('cost',`마켓 기본값 수정: ${old} → ${m[field]}`); save(); renderAll();
+}
+function deleteMarket(id){
+  const m=market(id);
+  if(!confirm(`'${m.name}' 마켓을 삭제할까요? 해당 마켓 가격도 삭제됩니다.`))return;
+  S.markets=S.markets.filter(x=>x.id!==id);
+  Object.keys(S.prices).forEach(k=>{if(k.endsWith('__'+id))delete S.prices[k];});
+  log('product',`마켓 삭제: ${m.name}`); save(); renderAll();
+}
+
+function backupJSON(){
+  const blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});
+  download(blob,`판매가격_마진관리_백업_${today()}.json`);
+}
+function restoreJSON(inp){
+  const f=inp.files[0]; if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{try{
+    const d=JSON.parse(r.result);
+    if(!confirm('현재 데이터를 백업 파일로 덮어쓸까요?'))return;
+    S=d; if(!S.hist)S.hist=[]; save(); renderAll(); toast('복원되었습니다');
+  }catch(e){toast('파일을 읽을 수 없습니다');}};
+  r.readAsText(f); inp.value='';
+}
+function exportCSV(){
+  const rows=[['제품','구분','원가','마켓','판매가','가격구분','수수료%','배송비','마케팅비%','예상마진','마진율%','목표마진율','권장판매가']];
+  S.products.forEach(p=>S.markets.forEach(m=>{
+    const r=priceRow(p.id,m.id), c=channelCost(p,m), mi=marginInfo(p,m,r.price), rec=recommendedPrice(p,m,p.targetMargin||20);
+    rows.push([p.name,p.type==='set'?'세트':'단품',productCost(p),m.name,r.price,r.type,c.fee,c.ship,c.ad,mi.profit??'',mi.rate??'',p.targetMargin||20,rec??'']);
+  }));
+  const csv='\uFEFF'+rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  download(new Blob([csv],{type:'text/csv'}),`판매가격_마진현황_${today()}.csv`);
+}
+function download(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
+function resetAll(){if(!confirm('정말 전체 초기화할까요?'))return;S={markets:[],products:[],prices:{},hist:[],plans:[],boards:[],activeBoardId:'',locked:true};defaults();save();renderAll();toast('초기화되었습니다');}
+function seedDemo(){
+  if(S.products.length&&!confirm('기존 데이터에 예시를 추가할까요?'))return;
+  const a={id:uid(),type:'single',name:'유기농 레몬즙 100포',sku:'LEMON-100',cost:11500,targetMargin:20,costs:{}};
+  const b={id:uid(),type:'single',name:'애사비 100포',sku:'ACV-100',cost:9800,targetMargin:20,costs:{}};
+  S.products.push(a,b);
+  const set={id:uid(),type:'set',name:'상큼 클린 루틴세트',sku:'SET-CLN',targetMargin:22,components:[{productId:a.id,qty:1},{productId:b.id,qty:1}],costs:{}};
+  S.products.push(set);
+  S.markets.forEach(m=>{
+    priceRow(a.id,m.id).price=m.name.includes('쿠팡')?18900:m.name.includes('자사')?21900:19900;
+    priceRow(a.id,m.id).type=m.name.includes('쿠팡')?'프로모션':'상시';
+    priceRow(b.id,m.id).price=m.name.includes('자사')?25900:24900;
+    priceRow(b.id,m.id).type='상시';
+    priceRow(set.id,m.id).price=m.name.includes('자사')?39900:38900;
+    priceRow(set.id,m.id).type=m.name.includes('자사')?'프로모션':'상시';
+  });
+  const nextWeek=new Date(Date.now()+7*86400000).toLocaleDateString('sv-SE');
+  S.boards.unshift({
+    id:uid(),title:'5월 4주차 쿠팡 타임딜',start:nextWeek,end:nextWeek,memo:'쿠팡 전용 프로모션 가격표',locked:true,done:false,createdAt:Date.now(),appliedAt:null,
+    plans:[{id:uid(),pid:a.id,mid:'coupang',price:17900,type:'프로모션',done:false}]
+  });
+  S.boards.unshift({
+    id:uid(),title:'5월 4주차 자사몰 세트 기획전',start:nextWeek,end:nextWeek,memo:'자사몰 전용 세트 프로모션 가격표',locked:true,done:false,createdAt:Date.now(),appliedAt:null,
+    plans:[{id:uid(),pid:set.id,mid:'ownmall',price:37900,type:'프로모션',done:false}]
+  });
+  log('product','예시 데이터 생성'); save(); renderAll(); toast('예시 데이터를 채웠습니다');
+}
+
+function showModal(title,sub,body,foot){
+  document.getElementById('modal').innerHTML=`
+    <div class="mh"><div><h3>${esc(title)}</h3><p>${esc(sub)}</p></div><button class="ghost tiny" onclick="closeModal()">닫기 ✕</button></div>
+    <div>${body}</div><div class="modal-foot"><button class="ghost" onclick="closeModal()">취소</button>${foot||''}</div>`;
+  document.getElementById('modalBg').classList.add('on');
+}
+function closeModal(){document.getElementById('modalBg').classList.remove('on');}
+document.getElementById('modalBg').addEventListener('click',e=>{if(e.target.id==='modalBg')closeModal();});
+let toastT; function toast(m){const el=document.getElementById('toast');el.textContent=m;el.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('on'),2200);}
+
+load(); save(); renderAll();
+</script>
+</body>
+</html>
