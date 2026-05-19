@@ -60,6 +60,8 @@
   .locked-price{font-family:var(--mono);font-weight:850;font-size:14px;color:var(--ink);display:block;line-height:1.6}
   .locked-type{margin-top:3px;display:inline-flex}
   .margin-muted{font-size:11px;color:var(--ink-soft);margin-top:3px}
+  .discount-info{font-size:11px;color:var(--ink-soft);margin-top:5px;line-height:1.45;font-family:var(--mono)}
+  .discount-info b{color:var(--accent);font-weight:900}
   .plan-date{width:128px;padding:6px 7px;font-size:12px}
   .plan-hero{background:linear-gradient(0deg,#fffdf8,#fffdf8);border:1px solid var(--line);border-radius:13px;padding:18px;margin-bottom:16px}
   .plan-hero-top{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;flex-wrap:wrap}
@@ -384,6 +386,15 @@ const uid=()=>Math.random().toString(36).slice(2,9);
 const today=()=>new Date().toLocaleDateString('sv-SE');
 const won=n=>(n===null||n===undefined||n==='')?'—':Number(n).toLocaleString('ko-KR')+'원';
 const pct=n=>(n===null||n===undefined||isNaN(n))?'—':Number(n).toFixed(1)+'%';
+const discountRate=(base,price)=>{
+  base=Number(base)||0; price=Number(price)||0;
+  if(!base||!price)return null;
+  return Math.floor((base-price)/base*100);
+};
+const discountText=(label,base,price)=>{
+  const r=discountRate(base,price);
+  return r===null?`${label} —`:`${label} <b>${r}%</b>`;
+};
 const key=(pid,mid)=>pid+'__'+mid;
 const product=id=>S.products.find(p=>p.id===id);
 const market=id=>S.markets.find(m=>m.id===id);
@@ -619,7 +630,7 @@ function renderDash(){
   let list=S.products.filter(p=>!q||p.name.includes(q));
   if(onlyIssue)list=list.filter(p=>['t-bad','t-warn'].includes(statusOf(p).cls));
   let h='<thead><tr><th>제품</th><th>구분</th><th class="num">정가</th><th class="num">고정상시판매가</th>';
-  S.markets.forEach(m=>h+=`<th class="num">${esc(m.name)}<div class="small">판매가 / 구분</div></th>`);
+  S.markets.forEach(m=>h+=`<th class="num">${esc(m.name)}<div class="small">판매가 / 구분 / 할인율</div></th>`);
   h+='<th class="num">최저가</th><th class="num">최고가</th><th class="num">차액</th><th>상태</th></tr></thead><tbody>';
   list.forEach(p=>{
     let vals=[];
@@ -629,15 +640,16 @@ function renderDash(){
       if(r.price)vals.push(Number(r.price));
       const mi=marginInfo(p,m,r.price);
       const marginCls=mi.rate!==null && mi.rate<10?'t-bad':mi.rate!==null&&mi.rate<20?'t-warn':'t-ok';
+      const discountHtml=`<div class="discount-info">${discountText('정가대비',p.listPrice,r.price)}<br>${discountText('고정상시대비',p.fixedRegularPrice,r.price)}</div>`;
       cells+=`<td class="num">
         ${S.locked
-          ? `<span class="locked-price">${won(r.price)}</span><span class="tag locked-type type-${r.type||'상시'}">${esc(r.type||'상시')}</span>`
+          ? `<span class="locked-price">${won(r.price)}</span><span class="tag locked-type type-${r.type||'상시'}">${esc(r.type||'상시')}</span>${discountHtml}`
           : `<input class="price-input" type="number" value="${esc(r.price)}" placeholder="0" onchange="setPrice('${p.id}','${m.id}',this.value)">
              <select class="mini-select" onchange="setPriceType('${p.id}','${m.id}',this.value)">
                <option ${r.type==='상시'?'selected':''}>상시</option>
                <option ${r.type==='프로모션'?'selected':''}>프로모션</option>
                <option ${r.type==='판매중지'?'selected':''}>판매중지</option>
-             </select>`}
+             </select>${discountHtml}`}
       </td>`;
     });
     const mn=vals.length?Math.min(...vals):null, mx=vals.length?Math.max(...vals):null;
