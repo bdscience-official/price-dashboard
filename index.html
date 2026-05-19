@@ -144,6 +144,11 @@
   .db-status.warn{color:var(--warn);border-color:#e8cf94}
   .db-status.bad{color:var(--bad);border-color:#eeb9b4}
   .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  .drag-handle{display:inline-flex;align-items:center;gap:6px;cursor:grab;user-select:none;font-weight:850;color:var(--ink-soft)}
+  .drag-handle:active{cursor:grabbing}
+  tr.dragging{opacity:.45;background:var(--accent-soft)!important}
+  tr.drag-over{outline:2px solid var(--accent);outline-offset:-2px;background:#fff7ee!important}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -227,6 +232,7 @@
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
             <button id="planLockBtn" onclick="togglePlanLock()"></button>
+            <button onclick="exportActiveBoardExcel()">엑셀 다운로드</button>
             <button id="applyAllBtn" class="plan-apply-btn" onclick="applyAllPlans()">현재 가격에 일괄 적용</button>
           </div>
         </div>
@@ -702,7 +708,7 @@ function backToBoardList(){
   save(); renderBoardList();
 }
 function boardFilledCount(b){
-  return (b.plans||[]).filter(pl=>pl.price).length;
+  return (b.plans||[]).filter(pl=>!pl.done && String(pl.price ?? '').trim()!=='' && Number(pl.price)>0).length;
 }
 function boardStatus(b){
   if(b.done)return {label:'적용 완료',cls:'t-ok'};
@@ -744,6 +750,7 @@ function renderBoardList(){
       </div>
       <div class="board-actions" style="margin-top:10px">
         <button class="tiny" onclick="openBoard('${b.id}')">열기</button>
+        <button class="tiny" onclick="exportBoardExcel('${b.id}')">엑셀 다운로드</button>
         <button class="tiny" onclick="duplicateBoard('${b.id}')">복제</button>
         <button class="tiny danger" onclick="deleteBoard('${b.id}')">삭제</button>
       </div>
@@ -848,8 +855,8 @@ function renderPlans(){
     }));
   }
   let filledCount=0;
-  let h='<thead><tr><th>제품</th><th>구분</th>';
-  S.markets.forEach(m=>h+=`<th class="num">${esc(m.name)}<div class="small">예정 판매가 / 구분</div></th>`);
+  let h='<thead><tr><th>제품</th><th>구분</th><th class="num">정가</th><th class="num">고정상시판매가</th>';
+  S.markets.forEach(m=>h+=`<th class="num">${esc(m.name)}<div class="small">예정 판매가 / 구분 / 할인율</div></th>`);
   h+='<th class="num">최저가</th><th class="num">최고가</th><th class="num">차액</th><th>상태</th></tr></thead><tbody>';
   list.forEach(p=>{
     let vals=[], cells='', hasAny=false;
@@ -858,15 +865,16 @@ function renderPlans(){
       const cur=priceRow(p.id,m.id);
       if(pl.price){vals.push(Number(pl.price)); hasAny=true; filledCount++;}
       const type=pl.type||'프로모션';
+      const discountHtml=`<div class="discount-info">${discountText('정가대비',p.listPrice,pl.price)}<br>${discountText('고정상시대비',p.fixedRegularPrice,pl.price)}</div>`;
       cells+=`<td class="num">
         ${b.locked
-          ? `<span class="locked-price">${pl.price?won(pl.price):'—'}</span><span class="tag locked-type type-${type}">${esc(type)}</span>`
+          ? `<span class="locked-price">${pl.price?won(pl.price):'—'}</span><span class="tag locked-type type-${type}">${esc(type)}</span>${discountHtml}`
           : `<input class="price-input" type="number" value="${esc(pl.price)}" placeholder="예정가" onchange="setPlanField('${pl.id}','price',this.value)">
              <select class="mini-select" onchange="setPlanField('${pl.id}','type',this.value)">
                <option ${type==='상시'?'selected':''}>상시</option>
                <option ${type==='프로모션'?'selected':''}>프로모션</option>
                <option ${type==='판매중지'?'selected':''}>판매중지</option>
-             </select>`}
+             </select>${discountHtml}`}
         <div class="small">현재 ${won(cur.price)} / ${esc(cur.type||'—')}</div>
       </td>`;
     });
@@ -875,6 +883,8 @@ function renderPlans(){
     h+=`<tr>
       <td><b>${esc(p.name)}</b><div class="small">${esc(p.sku||'')}</div></td>
       <td><span class="tag ${p.type==='set'?'t-info':'t-normal'}">${p.type==='set'?'세트':'단품'}</span></td>
+      <td class="num">${won(p.listPrice)}</td>
+      <td class="num">${won(p.fixedRegularPrice)}</td>
       ${cells}
       <td class="num">${won(mn)}</td><td class="num">${won(mx)}</td><td class="num">${mn!==null&&mx!==null?won(mx-mn):'—'}</td>
       <td><span class="tag ${st.cls}">${st.label}</span></td>
@@ -953,10 +963,10 @@ function renderProducts(){
     tbl.innerHTML=`<tbody><tr><td><div class="empty"><b>등록된 제품이 없습니다</b>단품을 먼저 등록한 뒤 세트를 만들 수 있습니다.</div></td></tr></tbody>`;
     return;
   }
-  let h='<thead><tr><th>제품명</th><th>구분</th><th class="num">정가</th><th class="num">고정상시판매가</th><th class="num">원가</th>';
+  let h='<thead><tr><th class="num">순서</th><th>제품명</th><th>구분</th><th class="num">정가</th><th class="num">고정상시판매가</th><th class="num">원가</th>';
   S.markets.forEach(m=>h+=`<th class="num">${esc(m.name)}<div class="small">현재마진 / 권장가</div></th>`);
   h+='<th>관리</th></tr></thead><tbody>';
-  S.products.forEach(p=>{
+  S.products.forEach((p,idx)=>{
     let ch='';
     S.markets.forEach(m=>{
       const price=priceRow(p.id,m.id).price;
@@ -968,7 +978,10 @@ function renderProducts(){
       </td>`;
     });
     const comp=p.type==='set'?`<div class="small">${(p.components||[]).map(c=>`${esc(product(c.productId)?.name||'?')}×${c.qty}`).join(' + ')}</div>`:'';
-    h+=`<tr>
+    h+=`<tr draggable="true" data-pid="${p.id}" ondragstart="productDragStart(event,'${p.id}')" ondragover="productDragOver(event,'${p.id}')" ondragleave="productDragLeave(event)" ondrop="productDrop(event,'${p.id}')" ondragend="productDragEnd(event)">
+      <td class="num">
+        <span class="drag-handle" title="드래그해서 순서 변경"><span class="mono">${idx+1}</span><span>☰</span></span>
+      </td>
       <td><b>${esc(p.name)}</b><div class="small">${esc(p.sku||'')}</div>${comp}</td>
       <td><span class="tag ${p.type==='set'?'t-info':'t-normal'}">${p.type==='set'?'세트':'단품'}</span></td>
       <td class="num">${won(p.listPrice)}</td>
@@ -982,6 +995,48 @@ function renderProducts(){
     </tr>`;
   });
   tbl.innerHTML=h+'</tbody>';
+}
+
+let draggingProductId='';
+function productDragStart(e,id){
+  draggingProductId=id;
+  e.currentTarget.classList.add('dragging');
+  if(e.dataTransfer){
+    e.dataTransfer.effectAllowed='move';
+    e.dataTransfer.setData('text/plain',id);
+  }
+}
+function productDragOver(e,id){
+  e.preventDefault();
+  if(!draggingProductId||draggingProductId===id)return;
+  e.currentTarget.classList.add('drag-over');
+  if(e.dataTransfer)e.dataTransfer.dropEffect='move';
+}
+function productDragLeave(e){
+  e.currentTarget.classList.remove('drag-over');
+}
+function productDrop(e,targetId){
+  e.preventDefault();
+  document.querySelectorAll('#prodTbl tr').forEach(tr=>tr.classList.remove('drag-over','dragging'));
+  const fromId=draggingProductId || e.dataTransfer?.getData('text/plain');
+  draggingProductId='';
+  if(!fromId||fromId===targetId)return;
+  reorderProduct(fromId,targetId);
+}
+function productDragEnd(e){
+  draggingProductId='';
+  document.querySelectorAll('#prodTbl tr').forEach(tr=>tr.classList.remove('drag-over','dragging'));
+}
+function reorderProduct(fromId,targetId){
+  const fromIdx=S.products.findIndex(p=>p.id===fromId);
+  const toIdx=S.products.findIndex(p=>p.id===targetId);
+  if(fromIdx<0||toIdx<0||fromIdx===toIdx)return;
+  const [moved]=S.products.splice(fromIdx,1);
+  S.products.splice(toIdx,0,moved);
+  log('product',`제품 순서 변경: ${moved.name||''}`,fromId);
+  save();
+  renderAll();
+  toast('제품 순서가 변경되었습니다');
 }
 
 function productFormCommon(p){
@@ -1354,7 +1409,85 @@ function exportCSV(){
   download(new Blob([csv],{type:'text/csv'}),`판매가격_마진현황_${today()}.csv`);
 }
 function download(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
-function resetAll(){if(!confirm('정말 전체 초기화할까요?'))return;S={markets:[],products:[],prices:{},hist:[],plans:[],boards:[],activeBoardId:'',locked:true};defaults();save();renderAll();toast('초기화되었습니다');}
+function safeFileName(s){return String(s||'파일').replace(/[\\/:*?"<>|]/g,'_').replace(/\s+/g,'_').slice(0,60);}
+function discountRateCell(base,price){
+  const r=discountRate(base,price);
+  return r===null?'':r+'%';
+}
+function excelCell(v){return String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function exportActiveBoardExcel(){
+  const b=activeBoard();
+  if(!b){toast('가격표를 찾을 수 없습니다');return;}
+  exportBoardExcel(b.id);
+}
+function exportBoardExcel(boardId){
+  const b=S.boards.find(x=>x.id===boardId);
+  if(!b){toast('가격표를 찾을 수 없습니다');return;}
+  const rows=[['프로모션명','시작일','종료일','메모','제품','구분','정가','고정상시판매가','마켓','현재 판매가','현재 구분','예정 판매가','예정 구분','정가대비 할인율','고정상시대비 할인율']];
+
+  // 엑셀 다운로드는 제품 단위가 아니라 "예정 판매가가 실제 입력된 셀" 단위로만 내려받습니다.
+  // 같은 제품/세트 안에서 일부 마켓만 입력된 경우, 입력되지 않은 마켓은 절대 포함하지 않습니다.
+  const productOrder=new Map(S.products.map((p,i)=>[p.id,i]));
+  const marketOrder=new Map(S.markets.map((m,i)=>[m.id,i]));
+  const filledPlanMap=new Map();
+
+  (b.plans||[]).forEach(pl=>{
+    // 화면의 '미입력' 상태와 동일하게, 완료(done) 처리된 과거 예정가나
+    // 공백/0/숫자가 아닌 값은 엑셀 다운로드 대상에서 제외합니다.
+    if(!pl || pl.done)return;
+    const rawPrice=String(pl.price ?? '').trim();
+    const plannedPrice=Number(rawPrice);
+    const hasPrice=rawPrice!=='' && !isNaN(plannedPrice) && plannedPrice>0;
+    if(!hasPrice)return;
+    if(!product(pl.pid) || !market(pl.mid))return;
+    // 같은 제품/마켓 계획이 중복 저장되어 있으면 마지막으로 입력된 값을 사용합니다.
+    filledPlanMap.set(key(pl.pid,pl.mid),{...pl,price:plannedPrice});
+  });
+
+  const filledPlans=[...filledPlanMap.values()].sort((a,b)=>{
+    const po=(productOrder.get(a.pid)??999999)-(productOrder.get(b.pid)??999999);
+    if(po!==0)return po;
+    return (marketOrder.get(a.mid)??999999)-(marketOrder.get(b.mid)??999999);
+  });
+
+  filledPlans.forEach(pl=>{
+    const p=product(pl.pid);
+    const m=market(pl.mid);
+    if(!p||!m)return;
+    const cur=priceRow(p.id,m.id);
+    const plannedPrice=Number(pl.price);
+    rows.push([
+      b.title||'', b.start||'', b.end||'', b.memo||'',
+      p.name||'', p.type==='set'?'세트':'단품', p.listPrice??'', p.fixedRegularPrice??'',
+      m.name||'', cur.price||'', cur.type||'', plannedPrice, pl.type||'',
+      discountRateCell(p.listPrice,plannedPrice),
+      discountRateCell(p.fixedRegularPrice,plannedPrice)
+    ]);
+  });
+
+  if(rows.length===1){
+    toast('입력된 예정 가격이 없습니다');
+    return;
+  }
+
+  const table='<table>'+rows.map((r,i)=>'<tr>'+r.map(c=>i===0?`<th>${excelCell(c)}</th>`:`<td>${excelCell(c)}</td>`).join('')+'</tr>').join('')+'</table>';
+  const html=`<html><head><meta charset="utf-8"></head><body>${table}</body></html>`;
+  download(new Blob(['\uFEFF'+html],{type:'application/vnd.ms-excel;charset=utf-8'}),`${safeFileName(b.title||'프로모션_예정가격표')}_${today()}.xls`);
+  toast('입력된 예정 가격만 엑셀로 다운로드했습니다');
+}
+function resetAll(){
+  const first=confirm(`⚠️ 경고\n\n전체 초기화를 진행하면 아래 데이터가 모두 삭제됩니다.\n\n- 제품정보\n- 가격정보\n- 예정가격\n- 변경 히스토리\n- 설정값\n- Supabase 저장 데이터\n\n이 작업은 되돌릴 수 없습니다.\n계속 진행하시겠습니까?`);
+  if(!first)return;
+  const text=prompt("최종 확인:\n삭제하려면 '전체삭제' 를 정확히 입력하세요.");
+  if(text!=="전체삭제"){toast('초기화가 취소되었습니다');return;}
+  if(!confirm('마지막 확인입니다.\n정말 전체 데이터를 삭제할까요?'))return;
+  S={markets:[],products:[],prices:{},hist:[],plans:[],boards:[],activeBoardId:'',locked:true};
+  defaults();
+  save();
+  renderAll();
+  toast('전체 데이터가 삭제되었습니다');
+}
 function seedDemo(){
   if(S.products.length&&!confirm('기존 데이터에 예시를 추가할까요?'))return;
   const a={id:uid(),type:'single',name:'유기농 레몬즙 100포',sku:'LEMON-100',listPrice:30000,fixedRegularPrice:21900,cost:11500,targetMargin:20,costs:{}};
