@@ -173,7 +173,7 @@
     <div class="stat-row" id="stats"></div>
     <div class="panel">
       <h2>제품별 현재 노출 가격</h2>
-      <div class="sub">별도 가격관리 탭 없이 이 표에서 바로 수정합니다. 각 마켓의 판매가와 구분을 입력하면 자동 저장되고, 최저가/최고가/마진율/경고가 계산됩니다.</div>
+      <div class="sub">별도 가격관리 탭 없이 이 표에서 바로 수정합니다. 제품관리에서 입력한 정가/고정상시판매가를 함께 확인하고, 각 마켓의 판매가와 구분을 입력하면 자동 저장되며 최저가/최고가/경고가 계산됩니다.</div>
       <div class="lockbar">
         <button id="lockBtn" onclick="toggleLock()"></button>
         <div><b id="lockTitle"></b><br><span id="lockDesc"></span></div>
@@ -618,7 +618,7 @@ function renderDash(){
   const onlyIssue=document.getElementById('onlyIssue').checked;
   let list=S.products.filter(p=>!q||p.name.includes(q));
   if(onlyIssue)list=list.filter(p=>['t-bad','t-warn'].includes(statusOf(p).cls));
-  let h='<thead><tr><th>제품</th><th>구분</th>';
+  let h='<thead><tr><th>제품</th><th>구분</th><th class="num">정가</th><th class="num">고정상시판매가</th>';
   S.markets.forEach(m=>h+=`<th class="num">${esc(m.name)}<div class="small">판매가 / 구분</div></th>`);
   h+='<th class="num">최저가</th><th class="num">최고가</th><th class="num">차액</th><th>상태</th></tr></thead><tbody>';
   list.forEach(p=>{
@@ -645,6 +645,8 @@ function renderDash(){
     h+=`<tr>
       <td><b>${esc(p.name)}</b><div class="small">${esc(p.sku||'')} · 원가 ${won(productCost(p))}</div></td>
       <td><span class="tag ${p.type==='set'?'t-info':'t-normal'}">${p.type==='set'?'세트':'단품'}</span></td>
+      <td class="num">${won(p.listPrice)}</td>
+      <td class="num">${won(p.fixedRegularPrice)}</td>
       ${cells}
       <td class="num">${won(mn)}</td><td class="num">${won(mx)}</td><td class="num">${mn!==null&&mx!==null?won(mx-mn):'—'}</td>
       <td><span class="tag ${st.cls}">${st.label}</span></td>
@@ -939,7 +941,7 @@ function renderProducts(){
     tbl.innerHTML=`<tbody><tr><td><div class="empty"><b>등록된 제품이 없습니다</b>단품을 먼저 등록한 뒤 세트를 만들 수 있습니다.</div></td></tr></tbody>`;
     return;
   }
-  let h='<thead><tr><th>제품명</th><th>구분</th><th class="num">원가</th>';
+  let h='<thead><tr><th>제품명</th><th>구분</th><th class="num">정가</th><th class="num">고정상시판매가</th><th class="num">원가</th>';
   S.markets.forEach(m=>h+=`<th class="num">${esc(m.name)}<div class="small">현재마진 / 권장가</div></th>`);
   h+='<th>관리</th></tr></thead><tbody>';
   S.products.forEach(p=>{
@@ -957,6 +959,8 @@ function renderProducts(){
     h+=`<tr>
       <td><b>${esc(p.name)}</b><div class="small">${esc(p.sku||'')}</div>${comp}</td>
       <td><span class="tag ${p.type==='set'?'t-info':'t-normal'}">${p.type==='set'?'세트':'단품'}</span></td>
+      <td class="num">${won(p.listPrice)}</td>
+      <td class="num">${won(p.fixedRegularPrice)}</td>
       <td class="num">${won(productCost(p))}</td>
       ${ch}
       <td>
@@ -995,6 +999,12 @@ function productFormCommon(p){
       <label class="fld">목표 마진율 %
         <input type="number" step="0.1" id="p_target" value="${p?.targetMargin??20}">
       </label>
+      <label class="fld">정가
+        <input type="number" id="p_list_price" value="${p?.listPrice??''}" placeholder="0">
+      </label>
+      <label class="fld">고정상시판매가
+        <input type="number" id="p_fixed_regular_price" value="${p?.fixedRegularPrice??''}" placeholder="0">
+      </label>
     </div>
     <div class="hint">마켓별 비용은 비워둘 수 없도록 기본값이 들어갑니다. 제품별로 다르면 여기서 덮어쓰면 됩니다.</div>
     <div class="cost-grid">
@@ -1018,6 +1028,8 @@ function saveProduct(id){
   obj.sku=document.getElementById('p_sku').value.trim();
   obj.cost=Number(document.getElementById('p_cost').value)||0;
   obj.targetMargin=Number(document.getElementById('p_target').value)||20;
+  obj.listPrice=document.getElementById('p_list_price').value===''?'':Number(document.getElementById('p_list_price').value)||0;
+  obj.fixedRegularPrice=document.getElementById('p_fixed_regular_price').value===''?'':Number(document.getElementById('p_fixed_regular_price').value)||0;
   obj.costs=readCosts();
   if(!id)S.products.push(obj);
   log(id?'cost':'product',`${id?'단품 수정':'단품 추가'}: ${name}`,obj.id);
@@ -1062,6 +1074,8 @@ function saveSet(id){
   obj.name=name;
   obj.sku=document.getElementById('p_sku').value.trim();
   obj.targetMargin=Number(document.getElementById('p_target').value)||20;
+  obj.listPrice=document.getElementById('p_list_price').value===''?'':Number(document.getElementById('p_list_price').value)||0;
+  obj.fixedRegularPrice=document.getElementById('p_fixed_regular_price').value===''?'':Number(document.getElementById('p_fixed_regular_price').value)||0;
   obj.components=comps;
   obj.costs=readCosts();
   if(!id)S.products.push(obj);
@@ -1319,10 +1333,10 @@ function restoreJSON(inp){
   r.readAsText(f); inp.value='';
 }
 function exportCSV(){
-  const rows=[['제품','구분','원가','마켓','판매가','가격구분','수수료%','배송비','마케팅비%','예상마진','마진율%','목표마진율','권장판매가']];
+  const rows=[['제품','구분','정가','고정상시판매가','원가','마켓','판매가','가격구분','수수료%','배송비','마케팅비%','예상마진','마진율%','목표마진율','권장판매가']];
   S.products.forEach(p=>S.markets.forEach(m=>{
     const r=priceRow(p.id,m.id), c=channelCost(p,m), mi=marginInfo(p,m,r.price), rec=recommendedPrice(p,m,p.targetMargin||20);
-    rows.push([p.name,p.type==='set'?'세트':'단품',productCost(p),m.name,r.price,r.type,c.fee,c.ship,c.ad,mi.profit??'',mi.rate??'',p.targetMargin||20,rec??'']);
+    rows.push([p.name,p.type==='set'?'세트':'단품',p.listPrice??'',p.fixedRegularPrice??'',productCost(p),m.name,r.price,r.type,c.fee,c.ship,c.ad,mi.profit??'',mi.rate??'',p.targetMargin||20,rec??'']);
   }));
   const csv='\uFEFF'+rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
   download(new Blob([csv],{type:'text/csv'}),`판매가격_마진현황_${today()}.csv`);
@@ -1331,10 +1345,10 @@ function download(blob,name){const a=document.createElement('a');a.href=URL.crea
 function resetAll(){if(!confirm('정말 전체 초기화할까요?'))return;S={markets:[],products:[],prices:{},hist:[],plans:[],boards:[],activeBoardId:'',locked:true};defaults();save();renderAll();toast('초기화되었습니다');}
 function seedDemo(){
   if(S.products.length&&!confirm('기존 데이터에 예시를 추가할까요?'))return;
-  const a={id:uid(),type:'single',name:'유기농 레몬즙 100포',sku:'LEMON-100',cost:11500,targetMargin:20,costs:{}};
-  const b={id:uid(),type:'single',name:'애사비 100포',sku:'ACV-100',cost:9800,targetMargin:20,costs:{}};
+  const a={id:uid(),type:'single',name:'유기농 레몬즙 100포',sku:'LEMON-100',listPrice:30000,fixedRegularPrice:21900,cost:11500,targetMargin:20,costs:{}};
+  const b={id:uid(),type:'single',name:'애사비 100포',sku:'ACV-100',listPrice:35000,fixedRegularPrice:25900,cost:9800,targetMargin:20,costs:{}};
   S.products.push(a,b);
-  const set={id:uid(),type:'set',name:'상큼 클린 루틴세트',sku:'SET-CLN',targetMargin:22,components:[{productId:a.id,qty:1},{productId:b.id,qty:1}],costs:{}};
+  const set={id:uid(),type:'set',name:'상큼 클린 루틴세트',sku:'SET-CLN',listPrice:65000,fixedRegularPrice:39900,targetMargin:22,components:[{productId:a.id,qty:1},{productId:b.id,qty:1}],costs:{}};
   S.products.push(set);
   S.markets.forEach(m=>{
     priceRow(a.id,m.id).price=m.name.includes('쿠팡')?18900:m.name.includes('자사')?21900:19900;
