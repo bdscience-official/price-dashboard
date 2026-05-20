@@ -406,6 +406,17 @@ const product=id=>S.products.find(p=>p.id===id);
 const market=id=>S.markets.find(m=>m.id===id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
+
+// 숫자 입력칸에서 마우스 휠로 값이 바뀌는 것을 방지합니다.
+// 가격 입력칸은 step=100으로 지정되어 화살표 클릭 시 100원 단위로 증감되고,
+// 수기 입력은 기존처럼 1원 단위까지 가능합니다.
+document.addEventListener('wheel', function(e){
+  const el = e.target;
+  if(el instanceof HTMLInputElement && el.type === 'number' && document.activeElement === el){
+    el.blur();
+  }
+}, {capture:true, passive:true});
+
 function defaults(){
   if(!S.markets.length){
     S.markets=[
@@ -650,7 +661,7 @@ function renderDash(){
       cells+=`<td class="num">
         ${S.locked
           ? `<span class="locked-price">${won(r.price)}</span><span class="tag locked-type type-${r.type||'상시'}">${esc(r.type||'상시')}</span>${discountHtml}`
-          : `<input class="price-input" type="number" value="${esc(r.price)}" placeholder="0" onchange="setPrice('${p.id}','${m.id}',this.value)">
+          : `<input class="price-input" type="number" step="100" value="${esc(r.price)}" placeholder="0" onchange="setPrice('${p.id}','${m.id}',this.value)">
              <select class="mini-select" onchange="setPriceType('${p.id}','${m.id}',this.value)">
                <option ${r.type==='상시'?'selected':''}>상시</option>
                <option ${r.type==='프로모션'?'selected':''}>프로모션</option>
@@ -869,7 +880,7 @@ function renderPlans(){
       cells+=`<td class="num">
         ${b.locked
           ? `<span class="locked-price">${pl.price?won(pl.price):'—'}</span><span class="tag locked-type type-${type}">${esc(type)}</span>${discountHtml}`
-          : `<input class="price-input" type="number" value="${esc(pl.price)}" placeholder="예정가" onchange="setPlanField('${pl.id}','price',this.value)">
+          : `<input class="price-input" type="number" step="100" value="${esc(pl.price)}" placeholder="예정가" onchange="setPlanField('${pl.id}','price',this.value)">
              <select class="mini-select" onchange="setPlanField('${pl.id}','type',this.value)">
                <option ${type==='상시'?'selected':''}>상시</option>
                <option ${type==='프로모션'?'selected':''}>프로모션</option>
